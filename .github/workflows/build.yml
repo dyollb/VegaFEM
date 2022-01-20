@@ -16,6 +16,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt install -y cmake 
+          sudo apt install -y libgl1-mesa-dev 
  
       - name: configure
         run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release
