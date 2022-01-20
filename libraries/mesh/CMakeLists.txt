@@ -12,8 +12,6 @@ set(SRCS
     tetKey.cpp
     tetMeshGeo.cpp
     tetMeshManifold.cpp
-    tetrahedron.cpp
-    #triangle-closestPoint.cpp # included from triangle.cpp
     triangle.cpp
     tribox3.cpp
     triKey.cpp

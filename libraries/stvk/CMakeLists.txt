@@ -1,5 +1,4 @@
 set(SRCS
-    cubicMeshIntegrals.cpp
     StVKCubeABCD.cpp
     StVKElementABCD.cpp
     StVKElementABCDLoader.cpp

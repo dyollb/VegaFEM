@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(VegaFEM)
+set(CMAKE_CXX_STANDARD 14)
 
 #FindOpenGL
 find_package(OpenGL QUIET)
@@ -15,10 +16,12 @@ if(BLAS_FOUND)
 	#FindLAPACK
 	find_package(LAPACK QUIET)
 endif(BLAS_FOUND)
-# #FindCGAL
+#FindCGAL
 find_package(CGAL QUIET)
-# #FindTBB
+#FindTBB
 find_package(TBB QUIET)
+#FindIGL
+find_path(IGL_INCLUDE_DIRS igl/harmonic.h)
 
 
 include_directories(
@@ -102,9 +105,10 @@ if(LAPACK_FOUND AND BLAS_FOUND)
 	)
 endif()
 
-if(CGAL_FOUND)
+if(CGAL_FOUND AND IGL_INCLUDE_DIRS)
 	list(APPEND VEGA_CORE_LIBRARIES
 		exactArithmetic
+		libiglInterface
 		virtualTets
 	)
 endif()
@@ -114,7 +118,7 @@ foreach(lib ${VEGA_CORE_LIBRARIES})
 	include_directories(libraries/${lib})
 endforeach()
 
-add_definitions(-D_USE_MATH_DEFINES)
+add_definitions(-D_USE_MATH_DEFINES -DGL_SILENCE_DEPRECATION)
 if (WIN32)
 	add_definitions(-DNOMINMAX)
 endif()

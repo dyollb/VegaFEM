@@ -4,5 +4,7 @@ set(SRCS
     planeER.cpp
     vec3ER.cpp
 )
+
 add_library(exactArithmetic OBJECT ${SRCS})
 target_link_libraries(exactArithmetic )
+target_include_directories(exactArithmetic PUBLIC ${CGAL_INCLUDE_DIRS})
