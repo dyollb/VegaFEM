@@ -1,0 +1,29 @@
+name: C/C++ CI
+
+on:
+  workflow_dispatch:
+  push:
+      branches: [ main ]
+  pull_request:
+      branches: [ main ]
+
+jobs:
+  build-and-test:
+      runs-on: ubuntu-18.04
+      steps:
+      - uses: actions/checkout@v2
+      - name: install thirdparties
+        run: |
+          sudo apt-get update
+          sudo apt install -y cmake 
+ 
+      - name: configure
+        run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release
+
+      - name: make
+        run: cmake --build CIBuild -j2
+
+      - name: make test
+        run: |
+          cd CIBuild
+          ctest -V
