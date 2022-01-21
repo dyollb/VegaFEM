@@ -33,7 +33,7 @@
 #include "matrixMacros.h"
 #include "StVKReducedStiffnessMatrix.h"
 #include "lapack-headers.h"
-#if defined(_WIN32) || defined(WIN32) || defined(linux) || defined(__linux__)
+#if defined(USE_INTEL_MKL)
   #include "mkl_service.h"
 #endif
 
@@ -242,7 +242,7 @@ void StVKReducedStiffnessMatrix::Evaluate(double * q, double * Rq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux) || defined(__linux__)
+    #if defined(USE_INTEL_MKL)
       mkl_max_threads = mkl_get_max_threads();
       mkl_dynamic = mkl_get_dynamic();
       mkl_set_num_threads(1);
@@ -302,7 +302,7 @@ void StVKReducedStiffnessMatrix::Evaluate(double * q, double * Rq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux) || defined(__linux__)
+    #if defined(USE_INTEL_MKL)
       mkl_set_num_threads(mkl_max_threads);
       mkl_set_dynamic(mkl_dynamic);
     #elif defined(__APPLE__)

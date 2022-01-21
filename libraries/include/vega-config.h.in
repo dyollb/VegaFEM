@@ -1,0 +1,2 @@
+#cmakedefine USE_INTEL_MKL
+#cmakedefine GLUT_FOUND
