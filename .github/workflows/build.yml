@@ -9,14 +9,19 @@ on:
 
 jobs:
   build-and-test:
-      runs-on: ubuntu-18.04
+      runs-on: ubuntu-20.04
       steps:
       - uses: actions/checkout@v2
       - name: install thirdparties
         run: |
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+          sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
           sudo apt-get update
-          sudo apt install -y cmake 
-          sudo apt install -y libgl1-mesa-dev 
+          sudo apt install -y cmake
+          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
+          sudo apt install -y libblas-dev liblapacke-dev
+#          echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+#          sudo apt install -y intel-mkl
  
       - name: configure
         run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release

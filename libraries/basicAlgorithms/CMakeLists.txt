@@ -7,4 +7,4 @@ set(SRCS
     uniqueIntegerID.cpp
 )
 add_library(basicAlgorithms OBJECT ${SRCS})
-target_link_libraries(basicAlgorithms )
+#target_link_libraries(basicAlgorithms )

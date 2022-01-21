@@ -1,8 +1,19 @@
-#if defined(WIN32) || defined(_WIN32) || defined(linux) || defined(__linux__)
+#include "vega-config.h"
+
+#if defined(USE_INTEL_MKL)
   #include "mkl_cblas.h"
   #include "mkl_types.h"
   #include "mkl_lapack.h"
   #include "mkl_blas.h"
+#elif defined(WIN32) || defined(_WIN32) || defined(linux) || defined(__linux__)
+  #include "cblas.h"
+  #ifndef NOCHANGE
+    #define NOCHANGE
+    #include "lapacke.h"
+    #undef NOCHANGE
+  #else
+    #include "lapacke.h"
+  #endif
 #elif defined(__APPLE__)
   #include <Accelerate/Accelerate.h>
   #ifdef __GNUC__
