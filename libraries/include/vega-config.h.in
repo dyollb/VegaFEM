@@ -1,2 +1,2 @@
-#cmakedefine USE_INTEL_MKL
-#cmakedefine GLUT_FOUND
+#cmakedefine VEGA_USE_INTEL_MKL
+#cmakedefine VEGAFEM_USE_GLUT

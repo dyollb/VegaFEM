@@ -24,7 +24,7 @@ jobs:
 #          sudo apt install -y intel-mkl
  
       - name: configure
-        run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release
+        run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release -DVEGAFEM_USE_TBB=OFF
 
       - name: make
         run: cmake --build CIBuild -j2
