@@ -1,2 +1,8 @@
+#pragma once
+
 #cmakedefine VEGA_USE_INTEL_MKL
-#cmakedefine VEGAFEM_USE_GLUT
+#cmakedefine VEGA_USE_GLUT
+
+#if defined(__APPLE__) && !defined(VEGA_USE_INTEL_MKL)
+    #define VEGA_USE_ACCELERATE
+#endif

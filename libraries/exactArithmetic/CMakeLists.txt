@@ -7,4 +7,4 @@ set(SRCS
 
 add_library(exactArithmetic OBJECT ${SRCS})
 target_link_libraries(exactArithmetic )
-target_include_directories(exactArithmetic PUBLIC ${CGAL_INCLUDE_DIRS})
+target_include_directories(exactArithmetic PRIVATE ${CGAL_INCLUDE_DIRS})

@@ -23,4 +23,4 @@ set(SRCS
     windingNumberTree.cpp
 )
 add_library(mesh OBJECT ${SRCS})
-target_link_libraries(mesh PRIVATE minivector basicAlgorithms ${VEGAFEM_DEPENDENCIES})
+target_link_libraries(mesh PRIVATE minivector basicAlgorithms ${VEGA_DEPENDENCIES})

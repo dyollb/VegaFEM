@@ -39,7 +39,7 @@
 #include "matrixLAPACK.h"
 #include "matrixBLAS.h"
 
-#ifdef __APPLE__
+#if defined(VEGA_USE_ACCELERATE)
   #define DGETRF dgetrf_
   #define DGETRI dgetri_
   #define SGETRF sgetrf_

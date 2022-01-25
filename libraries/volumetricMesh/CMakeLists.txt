@@ -18,4 +18,4 @@ set(SRCS
     volumetricMeshParser.cpp
 )
 add_library(volumetricMesh OBJECT ${SRCS})
-target_link_libraries(volumetricMesh PRIVATE sparseMatrix graph matrixIO objMesh mesh minivector ${VEGAFEM_DEPENDENCIES})
+target_link_libraries(volumetricMesh PRIVATE sparseMatrix graph matrixIO objMesh mesh minivector ${VEGA_DEPENDENCIES})

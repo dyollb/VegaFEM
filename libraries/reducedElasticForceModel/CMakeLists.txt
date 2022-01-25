@@ -9,4 +9,4 @@ set(SRCS
     reducedSubspaceStVKForceModel.cpp
 )
 add_library(reducedElasticForceModel OBJECT ${SRCS})
-target_link_libraries(reducedElasticForceModel PRIVATE reducedForceModel reducedStvk stvk massSpringSystem performanceCounter ${VEGAFEM_DEPENDENCIES})
+target_link_libraries(reducedElasticForceModel PRIVATE reducedForceModel reducedStvk stvk massSpringSystem performanceCounter ${VEGA_DEPENDENCIES})

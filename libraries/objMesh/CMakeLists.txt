@@ -14,4 +14,4 @@ if (GLUT_FOUND)
 endif()
 
 add_library(objMesh OBJECT ${SRCS})
-target_link_libraries(objMesh PRIVATE minivector matrixIO graph imageIO openGLHelper basicAlgorithms mesh ${VEGAFEM_DEPENDENCIES})
+target_link_libraries(objMesh PRIVATE minivector matrixIO graph imageIO openGLHelper basicAlgorithms mesh ${VEGA_DEPENDENCIES})
