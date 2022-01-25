@@ -98,12 +98,6 @@ protected:
   double * dampingMatrix; 
   double * tangentStiffnessMatrix; 
 
-  #ifdef __APPLE__
-    #define INTEGER __CLPK_integer
-  #else
-    #define INTEGER int
-  #endif
-
   double forceAssemblyTime, systemSolveTime;
 
   ReducedForceModel * reducedForceModel; 

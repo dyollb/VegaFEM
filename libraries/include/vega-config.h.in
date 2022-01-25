@@ -1,2 +1,8 @@
-#cmakedefine USE_INTEL_MKL
-#cmakedefine GLUT_FOUND
+#pragma once
+
+#cmakedefine VEGA_USE_INTEL_MKL
+#cmakedefine VEGA_USE_GLUT
+
+#if defined(__APPLE__) && !defined(VEGA_USE_INTEL_MKL)
+    #define VEGA_USE_ACCELERATE
+#endif

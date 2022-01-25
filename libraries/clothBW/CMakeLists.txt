@@ -3,4 +3,4 @@ set(SRCS
     clothBWFromObjMesh.cpp
 )
 add_library(clothBW OBJECT ${SRCS})
-target_link_libraries(clothBW minivector objMesh sparseMatrix)
+target_link_libraries(clothBW PRIVATE minivector objMesh sparseMatrix)

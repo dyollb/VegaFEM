@@ -10,4 +10,4 @@ set(SRCS
     StVKIsotropicMaterial.cpp
 )
 add_library(isotropicHyperelasticFEM OBJECT ${SRCS})
-target_link_libraries(isotropicHyperelasticFEM minivector volumetricMesh sparseMatrix)
+target_link_libraries(isotropicHyperelasticFEM PRIVATE minivector volumetricMesh sparseMatrix)

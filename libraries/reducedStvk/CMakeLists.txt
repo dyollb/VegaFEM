@@ -5,4 +5,4 @@ set(SRCS
     StVKReducedStiffnessMatrix.cpp
 )
 add_library(reducedStvk OBJECT ${SRCS})
-target_link_libraries(reducedStvk stvk matrix)
+target_link_libraries(reducedStvk PRIVATE stvk matrix ${VEGA_DEPENDENCIES})

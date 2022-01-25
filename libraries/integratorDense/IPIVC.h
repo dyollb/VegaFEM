@@ -32,7 +32,16 @@
 
 #ifndef _IPIVC_H_
 #define _IPIVC_H_
+
+#include "vega-config.h"
+
 #include <cstdlib>
+
+#if defined(VEGA_USE_ACCELERATE)
+    #define INTEGER __CLPK_integer
+#else
+    #define INTEGER int
+#endif
 
 // a buffer to hold r integers
 // a special buffer is necessary because INTEGER can be architecture-dependent

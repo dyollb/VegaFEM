@@ -3,4 +3,4 @@ set(SRCS
     cameraChangeLoad.cpp
 )
 add_library(camera OBJECT ${SRCS})
-target_link_libraries(camera )
+#target_link_libraries(camera )

@@ -7,4 +7,4 @@ set(SRCS
     integratorMulti1D.cpp
 )
 add_library(integratorDense OBJECT ${SRCS})
-target_link_libraries(integratorDense matrix integrator performanceCounter reducedForceModel)
+target_link_libraries(integratorDense PRIVATE matrix integrator performanceCounter reducedForceModel ${VEGA_DEPENDENCIES})

@@ -166,7 +166,7 @@ int MatrixPCA(ThresholdingSpecification * thresholdingSpecification,
     return -2;
   }
 
-  #ifdef __APPLE__
+#if defined(VEGA_USE_ACCELERATE)
     #define DGESVD dgesvd_
     #define INTEGER __CLPK_integer
   #else
