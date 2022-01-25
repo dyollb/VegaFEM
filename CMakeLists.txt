@@ -9,10 +9,6 @@ option(VEGAFEM_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGAFEM_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGAFEM_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
 option(VEGAFEM_USE_CGAL "Build meshing components using CGAL" OFF)
-configure_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/libraries/include/vega-config.h.in 
-	${CMAKE_BINARY_DIR}/vega-config.h
-)
 
 
 # thirdparties
@@ -51,7 +47,9 @@ set(ENABLE_LAPACK95 ON)
 find_package(MKL QUIET)
 if(MKL_FOUND)
 	set(VEGA_USE_INTEL_MKL ON)
-	list(APPEND VEGAFEM_DEPENDENCIES MKL::${MKL_LAPACK95})
+	list(APPEND VEGAFEM_DEPENDENCIES MKL::MKL) # ${MKL_CORE} MKL::${MKL_BLAS95} MKL::${MKL_LAPACK95}
+	get_target_property(MKL_INCLUDE_DIRS MKL::MKL INTERFACE_INCLUDE_DIRECTORIES)
+	#include_directories(${MKL_INCLUDE_DIRS})
 else()
 	find_package(BLAS REQUIRED)
 	list(APPEND VEGAFEM_DEPENDENCIES BLAS::BLAS)
@@ -62,6 +60,12 @@ else()
 	find_package(LAPACK REQUIRED)
 	list(APPEND VEGAFEM_DEPENDENCIES LAPACK::LAPACK)
 endif()
+
+
+configure_file(
+	${CMAKE_CURRENT_SOURCE_DIR}/libraries/include/vega-config.h.in 
+	${CMAKE_BINARY_DIR}/vega-config.h
+)
 
 
 set(VEGA_LIBRARIES
@@ -163,3 +167,6 @@ endforeach()
 
 add_library(vega ${OBJECT_FILES})
 target_link_libraries(vega ${VEGAFEM_DEPENDENCIES})
+
+# build utilities
+add_subdirectory(utilities)

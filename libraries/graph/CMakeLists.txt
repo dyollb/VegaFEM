@@ -2,4 +2,4 @@ set(SRCS
     graph.cpp
 )
 add_library(graph OBJECT ${SRCS})
-target_link_libraries(graph matrixIO sparseMatrix)
+target_link_libraries(graph PRIVATE matrixIO sparseMatrix)

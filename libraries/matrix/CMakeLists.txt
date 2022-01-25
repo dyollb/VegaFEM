@@ -7,4 +7,4 @@ set(SRCS
     matrixProjection.cpp
 )
 add_library(matrix OBJECT ${SRCS})
-target_link_libraries(matrix matrixIO)
+target_link_libraries(matrix PRIVATE matrixIO ${VEGAFEM_DEPENDENCIES})

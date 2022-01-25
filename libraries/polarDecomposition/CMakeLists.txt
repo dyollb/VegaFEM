@@ -4,4 +4,4 @@ set(SRCS
     polarDecompositionGradientDriver.cpp
 )
 add_library(polarDecomposition OBJECT ${SRCS})
-target_link_libraries(polarDecomposition minivector)
+target_link_libraries(polarDecomposition PRIVATE minivector)

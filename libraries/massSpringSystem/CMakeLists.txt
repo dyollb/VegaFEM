@@ -9,4 +9,4 @@ set(SRCS
     renderSprings.cpp
 )
 add_library(massSpringSystem OBJECT ${SRCS})
-target_link_libraries(massSpringSystem objMesh volumetricMesh configFile sparseMatrix)
+target_link_libraries(massSpringSystem PRIVATE objMesh volumetricMesh configFile sparseMatrix)

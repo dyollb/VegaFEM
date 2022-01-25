@@ -10,4 +10,4 @@ set(SRCS
     StVKTetHighMemoryABCD.cpp
 )
 add_library(stvk OBJECT ${SRCS})
-target_link_libraries(stvk minivector volumetricMesh sparseMatrix)
+target_link_libraries(stvk PRIVATE minivector volumetricMesh sparseMatrix)

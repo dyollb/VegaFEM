@@ -12,4 +12,4 @@ set(SRCS
     ZTAZMultiplicator.cpp
 )
 add_library(sparseSolver OBJECT ${SRCS})
-target_link_libraries(sparseSolver sparseMatrix constrainedDOFs performanceCounter)
+target_link_libraries(sparseSolver PRIVATE sparseMatrix constrainedDOFs performanceCounter ${VEGAFEM_DEPENDENCIES})
