@@ -9,7 +9,7 @@ option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
 option(VEGA_USE_CGAL "Build meshing components using CGAL" OFF)
-option(VEGA_BUILD_UTILITIES "Build utilities" ON)
+option(VEGA_BUILD_UTILITIES "Build utilities" OFF)
 
 
 # thirdparties
