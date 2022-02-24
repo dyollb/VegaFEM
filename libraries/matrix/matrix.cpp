@@ -390,7 +390,7 @@ int Matrix<real>::LUSolve(Matrix<real> & x, const Matrix<real> & rhs)
   return exitCode;
 }
 
-#ifdef USE_EXPOKIT
+#ifdef VEGA_USE_EXPOKIT
 
 template<class real>
 void Matrix<real>::MExpv(real t, const Matrix<real> & v, Matrix<real> & w)

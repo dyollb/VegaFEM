@@ -1,5 +1,5 @@
 set(SRCS
-    ARPACKSolver.cpp
+    #ARPACKSolver.cpp
     CGSolver.cpp
     invMKSolver.cpp
     invZTAZMSolver.cpp

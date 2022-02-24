@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
-project(VegaFEM CXX)
+project(VegaFEM CXX C)
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 # configuration options
@@ -9,6 +11,7 @@ option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
 option(VEGA_USE_CGAL "Build meshing components using CGAL" OFF)
+option(VEGA_USE_EXPOKIT "Build matrix exponentials using Expokit" OFF)
 option(VEGA_BUILD_UTILITIES "Build utilities" OFF)
 
 
@@ -34,10 +37,6 @@ if(VEGA_USE_GLEW)
 	list(APPEND VEGA_DEPENDENCIES GLEW::GLEW) # glew_s for static
 endif()
 
-if(VEGA_USE_CG_TOOLKIT)
-	find_package(Cg QUIET) # todo: this does not work yet
-endif()
-
 if(VEGA_USE_CGAL)
 	find_package(CGAL REQUIRED)
 	find_path(IGL_INCLUDE_DIRS igl/harmonic.h PATHS $ENV{IGL_ROOT}/include REQUIRED)
@@ -55,6 +54,14 @@ else()
 	find_package(BLAS REQUIRED)
 	find_package(LAPACK REQUIRED)
 	list(APPEND VEGA_DEPENDENCIES BLAS::BLAS LAPACK::LAPACK)
+endif()
+
+if(VEGA_USE_CG_TOOLKIT)
+	message(FATAL_ERROR "Cg toolkit not supported")
+endif()
+
+if (VEGA_USE_EXPOKIT)
+	message(FATAL_ERROR "Expkit not supported")
 endif()
 
 
@@ -162,6 +169,10 @@ foreach(lib ${VEGA_LIBRARIES})
 endforeach()
 
 add_library(vega ${OBJECT_FILES})
+if(BUILD_SHARED_LIBS)
+	set_target_properties(vega PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+	target_link_libraries(vega ${VEGA_DEPENDENCIES})
+endif()
 
 
 # build utilities

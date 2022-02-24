@@ -3,6 +3,7 @@
 #cmakedefine VEGA_USE_INTEL_MKL
 #cmakedefine VEGA_USE_PARDISO
 #cmakedefine VEGA_USE_SPOOLES
+#cmakedefine VEGA_USE_EXPOKIT
 #cmakedefine VEGA_USE_GLUT
 
 #if defined(__APPLE__) && !defined(VEGA_USE_INTEL_MKL)
