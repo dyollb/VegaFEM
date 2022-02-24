@@ -61,11 +61,10 @@
 #include "matrixMacros.h"
 #include "matrixBLAS.h"
 #include "matrixLAPACK.h"
+#include "vega-config.h"
 
-// uncomment the following to use the MExpv and MExp routines:
-//#define USE_EXPOKIT
 
-#ifdef USE_EXPOKIT
+#ifdef VEGA_USE_EXPOKIT
   #include "matrixExp.h"
 #endif
 
@@ -183,7 +182,7 @@ public:
 
   // === matrix exponential routines ===
 
-  // In order to use these routines, you must enable the USE_EXPOKIT definition in the header of matrix.h (disabled by default to avoid linker problems when expokit is not used), and link your code against the expokit library:
+  // In order to use these routines, you must enable the VEGA_USE_EXPOKIT definition in the header of matrix.h (disabled by default to avoid linker problems when expokit is not used), and link your code against the expokit library:
   // http://www.maths.uq.edu.au/expokit/
   // The expokit routines compute the matrix exponential of a general matrix in
   // full, using the irreducible rational Pade approximation to the 
@@ -300,7 +299,7 @@ inline const Matrix<real> LeastSquareSolve(const Matrix<real> & mtx, const Matri
 template<class real>
 inline const Matrix<real> MExp(real t, const Matrix<real> & mtx, int * code)
 {
-  #ifdef USE_EXPOKIT
+  #ifdef VEGA_USE_EXPOKIT
     if (mtx.Getm() != mtx.Getn())
     {    
       printf("Matrix size mismatch in Matrix::MExp . mtx.m = %d, mtx.n = %d\n", mtx.Getm(), mtx.Getn());

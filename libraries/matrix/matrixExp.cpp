@@ -41,13 +41,11 @@
 #include "matrixExp.h"
 
 #ifdef __APPLE__
-  #define DGPADM dgpadm_
-  #define SGPADM sgpadm_
-  #define INTEGER long int
+#define DGPADM dgpadm_
+#define SGPADM sgpadm_
 #else
-  #define DGPADM dgpadm_
-  #define SGPADM sgpadm_
-  #define INTEGER int
+#define DGPADM dgpadm_
+#define SGPADM sgpadm_
 #endif
 
 template<bool C>

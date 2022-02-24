@@ -3,10 +3,12 @@ set(SRCS
     createTriMesh.cpp
     exactOctree.cpp
     geometryQuery.cpp
+    initPredicates.cpp
     intersection_tunicate.cpp
     labelOuterTets.cpp
     meshIntersection.cpp
     predicates.cpp
+    predicates_Shewchuk.c
     rectKey.cpp
     simpleSphere.cpp
     tetKey.cpp

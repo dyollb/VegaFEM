@@ -72,11 +72,6 @@ int simplex_intersection3d(int k, const double* x0, const double* x1, const doub
 
 // -------------------------------------------------------------
 
-void initPredicates()
-{
-  exactinit();
-}
-
 double orient2d(const double pa[2], const double pb[2], const double pc[2])
 {
   return orient2d((double*)pa, (double*)pb, (double*)pc);
