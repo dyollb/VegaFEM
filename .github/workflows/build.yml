@@ -37,8 +37,6 @@ jobs:
     - name: install thirdparties (ubuntu)
       if: startsWith(matrix.config.name, 'ubuntu')
       run: |
-        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
-        sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
         sudo apt-get update
         sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
         sudo apt install -y libblas-dev liblapacke-dev
@@ -49,7 +47,7 @@ jobs:
         cmake --version
 
     - name: configure
-      run: cmake -S . -B CIBuild -DCMAKE_BUILD_TYPE=Release -DVEGA_USE_TBB=OFF
+      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DVEGA_USE_TBB=OFF
 
     - name: make
       run: cmake --build CIBuild -j2
@@ -58,3 +56,8 @@ jobs:
       run: |
         cd CIBuild
         ctest -V
+
+    - name: make install
+      run:  |
+        # cmake --build CIBuild --target install --config Release
+        cmake --version
