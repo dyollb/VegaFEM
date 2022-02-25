@@ -9,27 +9,52 @@ on:
 
 jobs:
   build-and-test:
-      runs-on: ubuntu-20.04
-      steps:
-      - uses: actions/checkout@v2
-      - name: install thirdparties
-        run: |
-          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
-          sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-          sudo apt-get update
-          sudo apt install -y cmake
-          sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
-          sudo apt install -y libblas-dev liblapacke-dev
-#          echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-#          sudo apt install -y intel-mkl
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      matrix:
+        config:
+        - {
+          name: "ubuntu-20.04",
+          os: ubuntu-20.04,
+          cc: "gcc",
+          cxx: "g++",
+          generators: "Unix Makefiles",
+          toolset: "gcc"
+          }
+        - {
+          name: "macos-11",
+          os: macos-11,
+          cc: "clang",
+          cxx: "clang++",
+          generators: "Unix Makefiles",
+          toolset: "clang"
+          }
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: install thirdparties (ubuntu)
+      if: startsWith(matrix.config.name, 'ubuntu')
+      run: |
+        wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | sudo apt-key add -
+        sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
+        sudo apt-get update
+        sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
+        sudo apt install -y libblas-dev liblapacke-dev
  
-      - name: configure
-        run: cmake -H. -BCIBuild -DCMAKE_BUILD_TYPE=Release -DVEGA_USE_TBB=OFF
+    - name: install thirdparties (macos)
+      if: startsWith(matrix.config.name, 'macos')
+      run: |
+        cmake --version
 
-      - name: make
-        run: cmake --build CIBuild -j2
+    - name: configure
+      run: cmake -S . -B CIBuild -DCMAKE_BUILD_TYPE=Release -DVEGA_USE_TBB=OFF
 
-      - name: make test
-        run: |
-          cd CIBuild
-          ctest -V
+    - name: make
+      run: cmake --build CIBuild -j2
+
+    - name: make test
+      run: |
+        cd CIBuild
+        ctest -V
