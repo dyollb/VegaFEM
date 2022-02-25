@@ -179,3 +179,10 @@ endif()
 if(VEGA_BUILD_UTILITIES)
 	add_subdirectory(utilities)
 endif()
+
+
+# install
+#set(LIBRARY_DIRS)
+#get_filename_component(GLUT_LIBRARY_DIR ${GLUT_glut_LIBRARY} DIRECTORY)
+include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
+#install_app(vega LIBRARY_DIRS ${Boost_LIBRARY_DIRS})
