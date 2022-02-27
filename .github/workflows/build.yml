@@ -40,14 +40,14 @@ jobs:
         sudo apt-get update
         sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
         sudo apt install -y libblas-dev liblapacke-dev
- 
+
     - name: install thirdparties (macos)
       if: startsWith(matrix.config.name, 'macos')
       run: |
         cmake --version
 
     - name: configure
-      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DVEGA_USE_TBB=OFF
+      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB=OFF
 
     - name: make
       run: cmake --build CIBuild -j2

@@ -157,7 +157,7 @@ foreach(lib ${VEGA_LIBRARIES})
   list(APPEND OBJECT_FILES $<TARGET_OBJECTS:${lib}>)
 endforeach()
 
-add_library(vega SHARED ${OBJECT_FILES})
+add_library(vega ${OBJECT_FILES})
 if(BUILD_SHARED_LIBS)
   set_target_properties(vega PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(vega ${VEGA_DEPENDENCIES})
