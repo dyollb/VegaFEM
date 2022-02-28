@@ -164,6 +164,7 @@ foreach(lib ${VEGA_LIBRARIES})
 endforeach()
 
 # link everything together into one library
+set(CMAKE_DEBUG_POSTFIX d)
 add_library(vega ${VEGA_SOURCES})
 target_link_libraries(vega ${VEGA_DEPENDENCIES})
 if(BUILD_SHARED_LIBS)
@@ -186,3 +187,5 @@ install(
   DESTINATION include
   FILES_MATCHING
   PATTERN "*.h")
+
+install(FILES ${CMAKE_BINARY_DIR}/vega-config.h DESTINATION include)

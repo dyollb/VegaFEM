@@ -15,39 +15,58 @@ jobs:
       matrix:
         config:
         - {
+          name: "ubuntu-18.04",
+          os: ubuntu-18.04,
+          cc: "gcc",
+          cxx: "g++",
+          use_tbb: "OFF"
+          }
+        - {
           name: "ubuntu-20.04",
           os: ubuntu-20.04,
           cc: "gcc",
           cxx: "g++",
-          generators: "Unix Makefiles",
-          toolset: "gcc"
+          use_tbb: "ON"
           }
         - {
-          name: "macos-11",
+          name: "macos-11 (no tbb)",
           os: macos-11,
           cc: "clang",
           cxx: "clang++",
-          generators: "Unix Makefiles",
-          toolset: "clang"
+          use_tbb: "OFF"
+          }
+        - {
+          name: "macos-11 (with tbb)",
+          os: macos-11,
+          cc: "clang",
+          cxx: "clang++",
+          use_tbb: "ON"
           }
 
     steps:
     - uses: actions/checkout@v2
 
-    - name: install thirdparties (ubuntu)
-      if: startsWith(matrix.config.name, 'ubuntu')
+    - name: install thirdparties (ubuntu-18.04)
+      if: startsWith(matrix.config.name, 'ubuntu-18.04')
       run: |
         sudo apt-get update
         sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
         sudo apt install -y libblas-dev liblapacke-dev
 
+    - name: install thirdparties (ubuntu-20.04)
+      if: startsWith(matrix.config.name, 'ubuntu-20.04')
+      run: |
+        sudo apt-get update
+        sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
+        sudo apt install intel-mkl
+
     - name: install thirdparties (macos)
       if: startsWith(matrix.config.name, 'macos')
       run: |
-        cmake --version
+        brew install tbb
 
     - name: configure
-      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB=OFF
+      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB="${{ matrix.config.use_tbb }}"
 
     - name: make
       run: cmake --build CIBuild -j2
