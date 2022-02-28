@@ -38,8 +38,8 @@ jobs:
         - {
           name: "macos-11 (with tbb)",
           os: macos-11,
-          cc: "clang",
-          cxx: "clang++",
+          cc: "gcc",
+          cxx: "g++",
           use_tbb: "ON"
           }
 
