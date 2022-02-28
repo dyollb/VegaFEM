@@ -10,6 +10,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # configuration options
 option(VEGA_USE_TBB "Build VegaFEM using TBB" ON)
+option(VEGA_USE_PARDISO "Build VegaFEM using PARDISO support (requires MKL)"
+       OFF)
 option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
@@ -47,12 +49,13 @@ endif()
 
 set(ENABLE_BLAS95 ON)
 set(ENABLE_LAPACK95 ON)
-set(ENABLE_CPARDISO ON)
+set(ENABLE_CPARDISO ${VEGA_USE_PARDISO})
 find_package(MKL QUIET)
 if(MKL_FOUND)
   set(VEGA_USE_INTEL_MKL ON)
-  set(VEGA_USE_PARDISO ON)
   list(APPEND VEGA_DEPENDENCIES MKL::MKL)
+elseif(${VEGA_USE_PARDISO})
+  message(FATAL_ERROR "PARDISO not found")
 else()
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
@@ -179,6 +182,7 @@ endif()
 # install
 install(
   TARGETS vega
+  ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib)
 
