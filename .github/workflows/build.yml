@@ -58,7 +58,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt install -y libgl1-mesa-dev libglu1-mesa-dev
-        sudo apt install intel-mkl
+        sudo DEBIAN_FRONTEND=noninteractive apt install -y intel-mkl
 
     - name: install thirdparties (macos)
       if: startsWith(matrix.config.name, 'macos')

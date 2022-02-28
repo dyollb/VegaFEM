@@ -27,6 +27,7 @@ list(APPEND VEGA_DEPENDENCIES OpenGL::GL)
 if(VEGA_USE_TBB)
   find_package(TBB REQUIRED)
   list(APPEND VEGA_DEPENDENCIES ${TBB_IMPORTED_TARGETS})
+  message(STATUS "TBB_VERSION ${TBB_VERSION}")
   add_definitions(-DUSE_TBB)
 endif()
 
@@ -59,12 +60,16 @@ else()
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
   list(APPEND VEGA_DEPENDENCIES BLAS::BLAS LAPACK::LAPACK)
-  try_compile(
-    VEGA_USE_INTEL_MKL ${CMAKE_BINARY_DIR}
-    ${CMAKE_SOURCE_DIR}/cmake/test_include_mkl.cpp
-    LINK_LIBRARIES BLAS::BLAS
-    OUTPUT_VARIABLE test_out)
-  message(STATUS "Using Intel MKL: ${VEGA_USE_INTEL_MKL} ${test_out}")
+  foreach(lib ${BLAS_LIBRARIES})
+    if (${lib} MATCHES "mkl")
+      set(VEGA_USE_INTEL_MKL ON)
+    endif()
+  endforeach()
+  if(VEGA_USE_INTEL_MKL)
+    find_path(BLAS_INCLUDE_DIRS mkl_cblas.h PATHS /usr/include /usr/local/include /usr/include/mkl REQUIRED)
+    include_directories(${BLAS_INCLUDE_DIRS})
+  endif()
+  message(STATUS "Using Intel MKL: ${VEGA_USE_INTEL_MKL}")
 endif()
 
 if(VEGA_USE_CG_TOOLKIT)
