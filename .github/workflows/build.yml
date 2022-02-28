@@ -66,7 +66,7 @@ jobs:
         brew install tbb
 
     - name: configure
-      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB="${{ matrix.config.use_tbb }}"
+      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB=${{ matrix.config.use_tbb }}
 
     - name: make
       run: cmake --build CIBuild -j2

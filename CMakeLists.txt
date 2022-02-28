@@ -63,6 +63,7 @@ else()
     VEGA_USE_INTEL_MKL ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/cmake/test_include_mkl.cpp
     LINK_LIBRARIES LAPACK::LAPACK)
+  message(STATUS "Using Intel MKL: ${VEGA_USE_INTEL_MKL}")
 endif()
 
 if(VEGA_USE_CG_TOOLKIT)
