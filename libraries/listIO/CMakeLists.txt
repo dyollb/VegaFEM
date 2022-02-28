@@ -1,5 +1,3 @@
-set(SRCS
-    listIO.cpp
-)
-add_library(listIO OBJECT ${SRCS})
-target_link_libraries(listIO )
+set(SRCS listIO.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

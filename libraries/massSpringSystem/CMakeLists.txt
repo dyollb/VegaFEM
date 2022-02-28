@@ -6,7 +6,6 @@ set(SRCS
     massSpringSystemFromObjMeshConfigFile.cpp
     massSpringSystemFromTetMesh.cpp
     massSpringSystemFromTetMeshConfigFile.cpp
-    renderSprings.cpp
-)
-add_library(massSpringSystem OBJECT ${SRCS})
-target_link_libraries(massSpringSystem PRIVATE objMesh volumetricMesh configFile sparseMatrix)
+    renderSprings.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

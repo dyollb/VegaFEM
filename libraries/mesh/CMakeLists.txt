@@ -22,7 +22,6 @@ set(SRCS
     triMeshNeighbor.cpp
     triMeshPseudoNormal.cpp
     verticesInfo.cpp
-    windingNumberTree.cpp
-)
-add_library(mesh OBJECT ${SRCS})
-target_link_libraries(mesh PRIVATE minivector basicAlgorithms ${VEGA_DEPENDENCIES})
+    windingNumberTree.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

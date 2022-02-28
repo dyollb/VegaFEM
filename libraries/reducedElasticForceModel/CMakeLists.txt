@@ -6,7 +6,6 @@ set(SRCS
     reducedSpringForceModel.cpp
     reducedStVKForceModel.cpp
     reducedStVKForceModelWithHessian.cpp
-    reducedSubspaceStVKForceModel.cpp
-)
-add_library(reducedElasticForceModel OBJECT ${SRCS})
-target_link_libraries(reducedElasticForceModel PRIVATE reducedForceModel reducedStvk stvk massSpringSystem performanceCounter ${VEGA_DEPENDENCIES})
+    reducedSubspaceStVKForceModel.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

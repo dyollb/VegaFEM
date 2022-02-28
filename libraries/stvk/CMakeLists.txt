@@ -7,7 +7,6 @@ set(SRCS
     StVKInternalForces.cpp
     StVKStiffnessMatrix.cpp
     StVKTetABCD.cpp
-    StVKTetHighMemoryABCD.cpp
-)
-add_library(stvk OBJECT ${SRCS})
-target_link_libraries(stvk PRIVATE minivector volumetricMesh sparseMatrix)
+    StVKTetHighMemoryABCD.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

@@ -1,6 +1,3 @@
-set(SRCS
-    reducedForceModel.cpp
-    reducedForceModelWithHessian.cpp
-)
-add_library(reducedForceModel OBJECT ${SRCS})
-target_link_libraries(reducedForceModel PRIVATE matrixIO ${VEGA_DEPENDENCIES})
+set(SRCS reducedForceModel.cpp reducedForceModelWithHessian.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

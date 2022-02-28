@@ -5,7 +5,6 @@ set(SRCS
     isotropicHyperelasticFEMStencilForceModel.cpp
     linearFEMStencilForceModel.cpp
     massSpringStencilForceModel.cpp
-    StVKStencilForceModel.cpp
-)
-add_library(stencilForceModel OBJECT ${SRCS})
-target_link_libraries(stencilForceModel PRIVATE forceModel corotationalLinearFEM massSpringSystem stvk isotropicHyperelasticFEM clothBW ${VEGA_DEPENDENCIES})
+    StVKStencilForceModel.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

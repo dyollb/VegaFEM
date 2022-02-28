@@ -1,5 +1,3 @@
-set(SRCS
-    glslPhong.cpp
-)
-add_library(glslPhong OBJECT ${SRCS})
-target_link_libraries(glslPhong )
+set(SRCS glslPhong.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

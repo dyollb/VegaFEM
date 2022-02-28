@@ -1,6 +1,3 @@
-set(SRCS
-    commandLineParser.cpp
-    getopts.cpp
-)
-add_library(getopts OBJECT ${SRCS})
-target_link_libraries(getopts )
+set(SRCS commandLineParser.cpp getopts.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

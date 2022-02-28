@@ -70,6 +70,7 @@ endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libraries/include/vega-config.h.in
                ${CMAKE_BINARY_DIR}/vega-config.h)
 
+# select components to build
 set(VEGA_LIBRARIES
     basicAlgorithms
     clothBW
@@ -147,20 +148,26 @@ if(WIN32)
   add_definitions(-DNOMINMAX)
 endif()
 
+set(VEGA_SOURCES)
+macro(collect_sources var)
+  set(sources)
+  foreach(s ${ARGN})
+    list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/${s})
+  endforeach()
+  set(${var}
+      "${${var}};${sources}"
+      PARENT_SCOPE)
+endmacro()
+
 foreach(lib ${VEGA_LIBRARIES})
   add_subdirectory(libraries/${lib})
 endforeach()
 
 # link everything together into one library
-set(OBJECT_FILES)
-foreach(lib ${VEGA_LIBRARIES})
-  list(APPEND OBJECT_FILES $<TARGET_OBJECTS:${lib}>)
-endforeach()
-
-add_library(vega ${OBJECT_FILES})
+add_library(vega ${VEGA_SOURCES})
+target_link_libraries(vega ${VEGA_DEPENDENCIES})
 if(BUILD_SHARED_LIBS)
   set_target_properties(vega PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  target_link_libraries(vega ${VEGA_DEPENDENCIES})
 endif()
 
 # build utilities
@@ -169,11 +176,11 @@ if(VEGA_BUILD_UTILITIES)
 endif()
 
 # install
-set(CMAKE_SKIP_INSTALL_RPATH ON)
 install(
   TARGETS vega
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib)
+
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/libraries/
   DESTINATION include

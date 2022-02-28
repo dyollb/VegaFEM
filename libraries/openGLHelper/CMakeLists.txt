@@ -1,9 +1,4 @@
-set(SRCS
-    handleRender.cpp
-    inputDevice.cpp
-    openGLHelper.cpp
-    printBitmap.cpp
-    saveScreenShot.cpp
-)
-add_library(openGLHelper OBJECT ${SRCS})
-target_link_libraries(openGLHelper imageIO minivector performanceCounter)
+set(SRCS handleRender.cpp inputDevice.cpp openGLHelper.cpp printBitmap.cpp
+         saveScreenShot.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

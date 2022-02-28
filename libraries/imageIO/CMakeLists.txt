@@ -1,5 +1,3 @@
-set(SRCS
-    imageIO.cpp
-)
-add_library(imageIO OBJECT ${SRCS})
-target_link_libraries(imageIO )
+set(SRCS imageIO.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

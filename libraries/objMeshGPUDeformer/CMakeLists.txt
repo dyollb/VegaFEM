@@ -8,7 +8,6 @@ set(SRCS
     objMeshGPUDeformer_uUq_pbuffer.cpp
     objMeshGPUDeformer_uUq_setLighting.cpp
     uUq-shaders.cpp
-    vbo.cpp
-)
-add_library(objMeshGPUDeformer OBJECT ${SRCS})
-target_link_libraries(objMeshGPUDeformer objMesh lighting)
+    vbo.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

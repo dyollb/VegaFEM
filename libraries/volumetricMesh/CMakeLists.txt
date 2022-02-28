@@ -15,7 +15,6 @@ set(SRCS
     volumetricMeshLoader.cpp
     volumetricMeshMooneyRivlinMaterial.cpp
     volumetricMeshOrthotropicMaterial.cpp
-    volumetricMeshParser.cpp
-)
-add_library(volumetricMesh OBJECT ${SRCS})
-target_link_libraries(volumetricMesh PRIVATE sparseMatrix graph matrixIO objMesh mesh minivector ${VEGA_DEPENDENCIES})
+    volumetricMeshParser.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})
