@@ -59,6 +59,8 @@ else()
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
   list(APPEND VEGA_DEPENDENCIES BLAS::BLAS LAPACK::LAPACK)
+  try_compile(VEGA_USE_INTEL_MKL cmake/test_include_mkl.cpp
+              LINK_LIBRARIES ${VEGA_DEPENDENCIES})
 endif()
 
 if(VEGA_USE_CG_TOOLKIT)
