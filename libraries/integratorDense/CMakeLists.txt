@@ -1,10 +1,6 @@
 set(SRCS
-    centralDifferencesDense.cpp
-    implicitBackwardEulerDense.cpp
-    implicitNewmarkDense.cpp
-    implicitNewmarkDenseMulti1D.cpp
-    integratorBaseDense.cpp
-    integratorMulti1D.cpp
-)
-add_library(integratorDense OBJECT ${SRCS})
-target_link_libraries(integratorDense PRIVATE matrix integrator performanceCounter reducedForceModel ${VEGA_DEPENDENCIES})
+    centralDifferencesDense.cpp implicitBackwardEulerDense.cpp
+    implicitNewmarkDense.cpp implicitNewmarkDenseMulti1D.cpp
+    integratorBaseDense.cpp integratorMulti1D.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

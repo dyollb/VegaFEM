@@ -5,7 +5,6 @@ set(SRCS
     vec3i.cpp
     vec4i.cpp
     eig3.cpp
-    mat3d.cpp
-)
-add_library(minivector OBJECT ${SRCS})
-target_link_libraries(minivector )
+    mat3d.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

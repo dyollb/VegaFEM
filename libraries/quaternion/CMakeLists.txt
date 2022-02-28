@@ -1,5 +1,3 @@
-set(SRCS
-    quaternion.cpp
-)
-add_library(quaternion OBJECT ${SRCS})
-target_link_libraries(quaternion )
+set(SRCS quaternion.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

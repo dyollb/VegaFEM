@@ -1,6 +1,3 @@
-set(SRCS
-    modalMatrix.cpp
-    modalMatrixTransposed.cpp
-)
-add_library(modalMatrix OBJECT ${SRCS})
-target_link_libraries(modalMatrix PRIVATE matrixIO ${VEGA_DEPENDENCIES})
+set(SRCS modalMatrix.cpp modalMatrixTransposed.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

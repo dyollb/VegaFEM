@@ -1,6 +1,3 @@
-set(SRCS
-    cameraLighting.cpp
-    lighting.cpp
-)
-add_library(lighting OBJECT ${SRCS})
-target_link_libraries(lighting configFile camera)
+set(SRCS cameraLighting.cpp lighting.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

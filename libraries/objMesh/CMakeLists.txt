@@ -7,11 +7,9 @@ set(SRCS
     objMeshOctree.cpp
     objMeshOffsetVoxels.cpp
     objMeshOrientable.cpp
-    octree.cpp
-)
-if (GLUT_FOUND)
-    list(APPEND SRCS objMeshRender.cpp)
+    octree.cpp)
+if(GLUT_FOUND)
+  list(APPEND SRCS objMeshRender.cpp)
 endif()
 
-add_library(objMesh OBJECT ${SRCS})
-target_link_libraries(objMesh PRIVATE minivector matrixIO graph imageIO openGLHelper basicAlgorithms mesh ${VEGA_DEPENDENCIES})
+collect_sources(VEGA_SOURCES ${SRCS})

@@ -1,5 +1,3 @@
-set(SRCS
-    graph.cpp
-)
-add_library(graph OBJECT ${SRCS})
-target_link_libraries(graph PRIVATE matrixIO sparseMatrix)
+set(SRCS graph.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

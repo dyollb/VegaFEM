@@ -1,5 +1,3 @@
-set(SRCS
-    barycentricCoordinates.cpp
-)
-add_library(interpolationCoordinates OBJECT ${SRCS})
-target_link_libraries(interpolationCoordinates PRIVATE minivector objMesh volumetricMesh mesh)
+set(SRCS barycentricCoordinates.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

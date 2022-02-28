@@ -1,6 +1,3 @@
-set(SRCS
-    clothBW.cpp
-    clothBWFromObjMesh.cpp
-)
-add_library(clothBW OBJECT ${SRCS})
-target_link_libraries(clothBW PRIVATE minivector objMesh sparseMatrix)
+set(SRCS clothBW.cpp clothBWFromObjMesh.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})

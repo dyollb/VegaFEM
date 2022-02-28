@@ -7,7 +7,6 @@ set(SRCS
     isotropicMaterialWithCompressionResistance.cpp
     MooneyRivlinIsotropicMaterial.cpp
     neoHookeanIsotropicMaterial.cpp
-    StVKIsotropicMaterial.cpp
-)
-add_library(isotropicHyperelasticFEM OBJECT ${SRCS})
-target_link_libraries(isotropicHyperelasticFEM PRIVATE minivector volumetricMesh sparseMatrix)
+    StVKIsotropicMaterial.cpp)
+
+collect_sources(VEGA_SOURCES ${SRCS})
