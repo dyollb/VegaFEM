@@ -10,6 +10,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # configuration options
 option(VEGA_USE_TBB "Build VegaFEM using TBB" ON)
+option(VEGA_USE_PARDISO "Build VegaFEM using PARDISO (requires MKL)" OFF)
 option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
@@ -25,7 +26,9 @@ list(APPEND VEGA_DEPENDENCIES OpenGL::GL)
 
 if(VEGA_USE_TBB)
   find_package(TBB REQUIRED)
+  get_target_property(TBB_INCLUDE_DIRS TBB::tbb INTERFACE_INCLUDE_DIRECTORIES)
   list(APPEND VEGA_DEPENDENCIES ${TBB_IMPORTED_TARGETS})
+  include_directories(${TBB_INCLUDE_DIRS})
   add_definitions(-DUSE_TBB)
 endif()
 
@@ -47,16 +50,31 @@ endif()
 
 set(ENABLE_BLAS95 ON)
 set(ENABLE_LAPACK95 ON)
-set(ENABLE_CPARDISO ON)
+set(ENABLE_CPARDISO ${VEGA_USE_PARDISO})
 find_package(MKL QUIET)
 if(MKL_FOUND)
   set(VEGA_USE_INTEL_MKL ON)
-  set(VEGA_USE_PARDISO ON)
   list(APPEND VEGA_DEPENDENCIES MKL::MKL)
+elseif(${VEGA_USE_PARDISO})
+  message(FATAL_ERROR "PARDISO not found")
 else()
   find_package(BLAS REQUIRED)
   find_package(LAPACK REQUIRED)
   list(APPEND VEGA_DEPENDENCIES BLAS::BLAS LAPACK::LAPACK)
+  foreach(lib ${BLAS_LIBRARIES})
+    if(${lib} MATCHES "mkl")
+      set(VEGA_USE_INTEL_MKL ON)
+    endif()
+  endforeach()
+  if(VEGA_USE_INTEL_MKL)
+    get_target_property(TARGET_BLAS_INCLUDE_DIRS BLAS::BLAS
+                        INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "TARGET_BLAS_INCLUDE_DIRS: ${TARGET_BLAS_INCLUDE_DIRS}")
+    find_path(BLAS_INCLUDE_DIRS mkl_cblas.h
+              PATHS /usr/include /usr/local/include /usr/include/mkl REQUIRED)
+    include_directories(${BLAS_INCLUDE_DIRS})
+  endif()
+  message(STATUS "Using Intel MKL: ${VEGA_USE_INTEL_MKL}")
 endif()
 
 if(VEGA_USE_CG_TOOLKIT)
@@ -164,6 +182,7 @@ foreach(lib ${VEGA_LIBRARIES})
 endforeach()
 
 # link everything together into one library
+set(CMAKE_DEBUG_POSTFIX d)
 add_library(vega ${VEGA_SOURCES})
 target_link_libraries(vega ${VEGA_DEPENDENCIES})
 if(BUILD_SHARED_LIBS)
@@ -178,6 +197,7 @@ endif()
 # install
 install(
   TARGETS vega
+  ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib)
 
@@ -186,3 +206,5 @@ install(
   DESTINATION include
   FILES_MATCHING
   PATTERN "*.h")
+
+install(FILES ${CMAKE_BINARY_DIR}/vega-config.h DESTINATION include)
