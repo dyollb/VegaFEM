@@ -61,7 +61,7 @@ else()
   list(APPEND VEGA_DEPENDENCIES BLAS::BLAS LAPACK::LAPACK)
   try_compile(
     VEGA_USE_INTEL_MKL ${CMAKE_BINARY_DIR}
-    cmake/test_include_mkl.cpp
+    ${CMAKE_SOURCE_DIR}/cmake/test_include_mkl.cpp
     LINK_LIBRARIES LAPACK::LAPACK)
 endif()
 
