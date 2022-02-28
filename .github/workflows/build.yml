@@ -29,18 +29,11 @@ jobs:
           use_tbb: "ON"
           }
         - {
-          name: "macos-11 (clang)",
+          name: "macos-11",
           os: macos-11,
           cc: "clang",
           cxx: "clang++",
           use_tbb: "OFF"
-          }
-        - {
-          name: "macos-11 (gcc)",
-          os: macos-11,
-          cc: "gcc",
-          cxx: "g++",
-          use_tbb: "ON"
           }
 
     steps:
@@ -63,7 +56,7 @@ jobs:
     - name: install thirdparties (macos)
       if: startsWith(matrix.config.name, 'macos')
       run: |
-        brew install tbb
+        cmake --version
 
     - name: configure
       run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB=${{ matrix.config.use_tbb }}
