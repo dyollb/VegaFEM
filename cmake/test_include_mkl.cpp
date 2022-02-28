@@ -1,4 +1,4 @@
-#include "mkl_lapack.h"
+#include "mkl_blas.h"
 
 int main(int arcg, char** argv)
 {
