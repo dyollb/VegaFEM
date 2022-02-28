@@ -29,14 +29,14 @@ jobs:
           use_tbb: "ON"
           }
         - {
-          name: "macos-11 (no tbb)",
+          name: "macos-11 (clang)",
           os: macos-11,
           cc: "clang",
           cxx: "clang++",
           use_tbb: "OFF"
           }
         - {
-          name: "macos-11 (with tbb)",
+          name: "macos-11 (gcc)",
           os: macos-11,
           cc: "gcc",
           cxx: "g++",
@@ -70,6 +70,9 @@ jobs:
 
     - name: make
       run: cmake --build CIBuild -j2
+      env:
+        CC: ${{ matrix.config.cc }}
+        CXX: ${{ matrix.config.cxx }}
 
     - name: make test
       run: |
