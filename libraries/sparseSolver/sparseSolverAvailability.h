@@ -4,7 +4,7 @@
 #include "vega-config.h"
 
 #ifdef VEGA_USE_PARDISO
-    #define PARDISO_SOLVER_IS_AVAILABLEin
+    #define PARDISO_SOLVER_IS_AVAILABLE
 #endif
 
 #ifdef VEGA_USE_SPOOLES
@@ -12,4 +12,3 @@
 #endif
 
 #endif
-
