@@ -90,10 +90,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libraries/include/vega-config.h.in
 
 # select components to build
 set(VEGA_LIBRARIES
-    basicAlgorithms
     clothBW
     configFile
-    constrainedDOFs
     corotationalLinearFEM
     elasticForceModel
     forceModel
@@ -101,17 +99,15 @@ set(VEGA_LIBRARIES
     graph
     hashTable
     imageIO
+    insertRows
     integrator
     integratorDense
     integratorSparse
-    interpolationCoordinates
     isotropicHyperelasticFEM
-    laplacianMatrix
-    listIO
+    loadList
     matrix
     massSpringSystem
     matrixIO
-    mesh
     minivector
     modalMatrix
     objMesh
@@ -124,8 +120,8 @@ set(VEGA_LIBRARIES
     rigidBodyDynamics
     sparseMatrix
     sparseSolver
-    stencilForceModel
     stvk
+    uniqueIntegerID
     volumetricMesh)
 
 if(VEGA_USE_GLUT)
