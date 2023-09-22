@@ -1,23 +1,19 @@
 /*************************************************************************
 *                                                                       *
-* Vega FEM Simulation Library Version 4.0                               *
+* Vega FEM Simulation Library Version 2.2                               *
 *                                                                       *
-* "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
+* "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
 * All rights reserved.                                                  *
 *                                                                       *
 * Code authors: Jernej Barbic, Christopher Twigg, Daniel Schroeder      *
-* http://www.jernejbarbic.com/vega                                      *
+* http://www.jernejbarbic.com/code                                      *
 *                                                                       *
-* Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
-*           Danyong Zhao, Bohan Wang,                                   *
-*           Fun Shing Sin, Daniel Schroeder,                            *
+* Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
 *           Doug L. James, Jovan Popovic                                *
 *                                                                       *
 * Funding: National Science Foundation, Link Foundation,                *
 *          Singapore-MIT GAMBIT Game Lab,                               *
-*          Zumberge Research and Innovation Fund at USC,                *
-*          Sloan Foundation, Okawa Foundation,                          *
-*          USC Annenberg Foundation                                     *
+*          Zumberge Research and Innovation Fund at USC                 *
 *                                                                       *
 * This library is free software; you can redistribute it and/or         *
 * modify it under the terms of the BSD-style license that is            *
@@ -40,7 +36,6 @@
 #include "openGL-headers.h"
 #include <string.h>
 #include "objMeshRender.h"
-#include "openGLHelper.h"
 #include "imageIO.h"
 using namespace std;
 
@@ -91,18 +86,17 @@ void ObjMeshRender::Texture::loadTexture(string fullPath, int textureMode_)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  if ((textureMode & OBJMESHRENDER_MIPMAPBIT) == OBJMESHRENDER_GL_USEMIPMAP)
+  if((textureMode & OBJMESHRENDER_MIPMAPBIT) == OBJMESHRENDER_GL_USEMIPMAP) 
   {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  }
-  else
-  {
+  } 
+  else {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   }
 
-  if ((textureMode & OBJMESHRENDER_LIGHTINGMODULATIONBIT) == OBJMESHRENDER_GL_REPLACE)
+  if((textureMode & OBJMESHRENDER_LIGHTINGMODULATIONBIT) == OBJMESHRENDER_GL_REPLACE)
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
   else
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -119,14 +113,14 @@ void ObjMeshRender::Texture::loadTexture(string fullPath, int textureMode_)
     format = GL_RGBA;
   }
 
-  if ((textureMode & OBJMESHRENDER_MIPMAPBIT) == OBJMESHRENDER_GL_NOMIPMAP)
+  if((textureMode & OBJMESHRENDER_MIPMAPBIT) == OBJMESHRENDER_GL_NOMIPMAP)
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, texData);
   else
   {
     char * versionString = (char*) glGetString(GL_VERSION);
     double version = 0.0;
     if (versionString != NULL)  // glGetString will return NULL in an invalid OpenGL context; this is to protect from a seg fault if versionString is NULL on the next line
-      version = strtod(versionString, NULL);
+      version = strtod(versionString, NULL); 
     if (version >= 3.0)
     {
       //unsigned char * texData1 = (unsigned char*) malloc (sizeof(unsigned char) * width * height * bytesPerPixel);
@@ -189,7 +183,7 @@ void ObjMeshRender::Texture::flipImage(int width, int height, int bpp, unsigned 
   free(rowBuffer);
 }
 
-ObjMeshRender::ObjMeshRender(const ObjMesh * mesh_) : mesh(mesh_)
+ObjMeshRender::ObjMeshRender(ObjMesh * mesh_) : mesh(mesh_) 
 {
   alphaBlendingThreshold = OBJMESHRENDER_DEFAULT_ALPHA_BLENDING_THRESHOLD;
 }
@@ -207,41 +201,39 @@ ObjMeshRender::~ObjMeshRender()
   textures.clear();
 }
 
-void ObjMeshRender::renderGroup(int groupIndex, int geometryMode, int renderMode, int giveWarnings)
+void ObjMeshRender::renderGroup(unsigned int groupIndex, int geometryMode, int renderMode)
 {
-  render(geometryMode, renderMode, groupIndex, giveWarnings);
+  render(geometryMode, renderMode, groupIndex);
 }
 
-void ObjMeshRender::renderGroup(const char * groupName, int geometryMode, int renderMode, int giveWarnings)
+void ObjMeshRender::renderGroup(const char * groupName, int geometryMode, int renderMode)
 {
   // get the group
-  unsigned int groupIndex = mesh->getGroupIndex(groupName);
-  render(geometryMode, renderMode, groupIndex, giveWarnings);
+  std::string name(groupName);
+  unsigned int groupIndex = mesh->getGroupIndex(name);
+  render(geometryMode, renderMode, groupIndex);
 }
 
-void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGroup, int giveWarnings)
+void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGroup)
 {
   if (renderMode & OBJMESHRENDER_TRANSPARENCY)
   {
     //printf("Two-pass render.\n");
     // two-pass render
-    int modifiedRenderMode = ((unsigned int)renderMode) & (~OBJMESHRENDER_TRANSPARENCY);
-
-    // save OpenGL states
-    glPushAttrib(GL_ENABLE_BIT|GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    int modifiedRenderMode = ((unsigned int)renderMode) & (~OBJMESHRENDER_TRANSPARENCY); 
 
     glEnable(GL_LIGHTING);
-
+  
     // pass 1
     glEnable(GL_ALPHA_TEST);
     // glAlphaFunc(GL_EQUAL, 1.0);
     glAlphaFunc(GL_GREATER, alphaBlendingThreshold);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
-    render(geometryMode, modifiedRenderMode, renderSingleGroup, giveWarnings);
+    render(geometryMode, modifiedRenderMode, renderSingleGroup);
 
     glEnable(GL_LIGHTING);
-
+    
     // pass 2
     glEnable(GL_ALPHA_TEST);
     //glAlphaFunc(GL_LESS, 1.0);
@@ -249,13 +241,12 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
     glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    render(geometryMode, modifiedRenderMode, renderSingleGroup, giveWarnings);
+    render(geometryMode, modifiedRenderMode, renderSingleGroup);
 
-    glPopAttrib(); // restore OpenGL states
-//    glDepthMask(GL_TRUE);
-//    glDisable(GL_BLEND);
-//    glDisable(GL_ALPHA_TEST);
-
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    glDisable(GL_ALPHA_TEST);
+    
     return;
   }
 
@@ -265,63 +256,51 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
   bool warnMissingTextures = false;
   //bool warnUnimplementedFlat = false;
 
-  // save OpenGL states
-  glPushAttrib(GL_ENABLE_BIT|GL_POLYGON_BIT|GL_LIGHTING_BIT|GL_TEXTURE_BIT);
-
-//  GLboolean lightingInitiallyEnabled = false;
-//  glGetBooleanv(GL_LIGHTING, &lightingInitiallyEnabled);
+  GLboolean lightingInitiallyEnabled = false;
+  glGetBooleanv(GL_LIGHTING, &lightingInitiallyEnabled);
+  //printf("lighting initially enabled: %d\n", lightingInitiallyEnabled);
 
   // resolve conflicts in render mode settings and/or mesh data
-  if ((renderMode & OBJMESHRENDER_FLAT) && (renderMode & OBJMESHRENDER_SMOOTH))
+  if((renderMode & OBJMESHRENDER_FLAT) && (renderMode & OBJMESHRENDER_SMOOTH))
   {
     printf("Requested both FLAT and SMOOTH rendering; SMOOTH used\n");
     renderMode &= ~OBJMESHRENDER_FLAT;
   }
 
-  if ((renderMode & OBJMESHRENDER_COLOR) && (renderMode & OBJMESHRENDER_MATERIAL))
+  if((renderMode & OBJMESHRENDER_COLOR) && (renderMode & OBJMESHRENDER_MATERIAL))
   {
     printf("Requested both COLOR and MATERIAL rendering; MATERIAL used\n");
     renderMode &= ~OBJMESHRENDER_COLOR;
   }
 
-  // GL_COLOR_MATERIAL enabled: let following glColor3f() command modify material parameters
-  if (renderMode & OBJMESHRENDER_COLOR)
+  if(renderMode & OBJMESHRENDER_COLOR)
     glEnable(GL_COLOR_MATERIAL);
-  else if (renderMode & OBJMESHRENDER_MATERIAL)
+  else if(renderMode & OBJMESHRENDER_MATERIAL)
     glDisable(GL_COLOR_MATERIAL);
 
-  if (renderMode & OBJMESHRENDER_CUSTOMCOLOR)
+  if(renderMode & OBJMESHRENDER_CUSTOMCOLOR)
     glDisable(GL_LIGHTING);
 
   // render triangles
-  if (geometryMode & OBJMESHRENDER_TRIANGLES)
+  if(geometryMode & OBJMESHRENDER_TRIANGLES)
   {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    PolygonOffsetFillState polygonFillState(1.0, 1.0);
-    if (geometryMode & (OBJMESHRENDER_EDGES | OBJMESHRENDER_VERTICES))
+    if(geometryMode & (OBJMESHRENDER_EDGES | OBJMESHRENDER_VERTICES))
     {
       //glEnable(GL_POLYGON_OFFSET_FILL);
       //glPolygonOffset(2.0, 2.0);
     }
 
     int faceCount = 0;
-    ObjMesh::Material defaultMaterial;
     for(unsigned int i=0; i < mesh->getNumGroups(); i++)
     {
-      if ((renderSingleGroup >= 0) && ((int)i != renderSingleGroup))
+      if ((renderSingleGroup >= 0) && ((int)i != renderSingleGroup))     
         continue;
-
-      auto hiddenIt = hiddenFaces.find(i);
-      bool hasHidden = (hiddenIt != hiddenFaces.end());
 
       const ObjMesh::Group * groupHandle = mesh->getGroupHandle(i);
       // set material
       const ObjMesh::Material * materialHandle = mesh->getMaterialHandle(groupHandle->getMaterialIndex());
       //printf("Material: %d\n",group.materialIndex());
-      if (materialHandle == nullptr)
-      {
-        materialHandle = &defaultMaterial;
-      }
       Vec3d Ka = materialHandle->getKa();
       Vec3d Kd = materialHandle->getKd();
       Vec3d Ks = materialHandle->getKs();
@@ -331,21 +310,21 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
       float ambient[4] = { (float)Ka[0], (float)Ka[1], (float)Ka[2], alpha };
       float diffuse[4] = { (float)Kd[0], (float)Kd[1], (float)Kd[2], alpha };
       float specular[4] = { (float)Ks[0], (float)Ks[1], (float)Ks[2], alpha };
-      if (renderMode & OBJMESHRENDER_MATERIAL)
+      if(renderMode & OBJMESHRENDER_MATERIAL)
       {
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient);
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse);
         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular);
         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
       }
-      else if (renderMode & OBJMESHRENDER_COLOR)
+      else if(renderMode & OBJMESHRENDER_COLOR)
       {
         glColor3fv(diffuse);
       }
 
-      if ((renderMode & OBJMESHRENDER_TEXTURE) && materialHandle->hasTextureFilename())
+      if((renderMode & OBJMESHRENDER_TEXTURE) && materialHandle->hasTextureFilename())
       {
-        if (groupHandle->getMaterialIndex() >= textures.size())
+        if(groupHandle->getMaterialIndex() >= textures.size())
         {
           //textures are missing
           warnMissingTextures = true;
@@ -357,7 +336,7 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
           Texture * textureHandle = textures[groupHandle->getMaterialIndex()];
           glBindTexture(GL_TEXTURE_2D, textureHandle->getTexture());
           glEnable(GL_TEXTURE_2D);
-          if ((textureHandle->getTextureMode() & OBJMESHRENDER_LIGHTINGMODULATIONBIT) == OBJMESHRENDER_GL_REPLACE)
+          if((textureHandle->getTextureMode() & OBJMESHRENDER_LIGHTINGMODULATIONBIT) == OBJMESHRENDER_GL_REPLACE)
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
           else
             glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -375,13 +354,12 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
 
       for(unsigned int iFace = 0; iFace < groupHandle->getNumFaces(); iFace++)
       {
-        if (hasHidden && hiddenIt->second.find(iFace) != hiddenIt->second.end()) continue;
         const ObjMesh::Face * faceHandle = groupHandle->getFaceHandle(iFace);
 
         glBegin(GL_POLYGON);
-        if (renderMode & OBJMESHRENDER_FLAT)
+        if(renderMode & OBJMESHRENDER_FLAT)
         {
-          if (faceHandle->hasFaceNormal())
+          if(faceHandle->hasFaceNormal())
           {
             Vec3d fnormal = faceHandle->getFaceNormal();
             glNormal3d(fnormal[0],fnormal[1],fnormal[2]);
@@ -391,12 +369,12 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
         }
 
         Vec3d faceColor(0,0,0);
-        if (renderMode & OBJMESHRENDER_CUSTOMCOLORFACES)
+        if(renderMode & OBJMESHRENDER_CUSTOMCOLORFACES)
         {
           if (customColorsFaces.size() == 0)
             faceColor = Vec3d(0,0,1);
           else
-            faceColor = customColorsFaces[faceCount+iFace];
+            faceColor = customColorsFaces[faceCount];
         }
 
         for(unsigned int iVertex = 0; iVertex < faceHandle->getNumVertices(); iVertex++)
@@ -406,9 +384,9 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
           int vertexPositionIndex = vertexHandle->getPositionIndex();
 
           // set normal
-          if (renderMode & OBJMESHRENDER_SMOOTH)
+          if(renderMode & OBJMESHRENDER_SMOOTH)
           {
-            if (vertexHandle->hasNormalIndex())
+            if(vertexHandle->hasNormalIndex())
             {
               Vec3d normal = mesh->getNormal(*vertexHandle);
               if ((!isnan(normal[0])) && (!isnan(normal[1])) && (!isnan(normal[2])))
@@ -421,9 +399,9 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
           }
 
           // set texture coordinate
-          if (renderMode & OBJMESHRENDER_TEXTURE)
+          if(renderMode & OBJMESHRENDER_TEXTURE)
           {
-            if (vertexHandle->hasTextureCoordinateIndex())
+            if(vertexHandle->hasTextureCoordinateIndex())
             {
               Vec3d vtexture = mesh->getTextureCoordinate(*vertexHandle);
               glTexCoord2d(vtexture[0], vtexture[1]);
@@ -432,7 +410,7 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
               warnMissingTextureCoordinates = true;
           }
 
-          if (renderMode & OBJMESHRENDER_CUSTOMCOLOR)
+          if(renderMode & OBJMESHRENDER_CUSTOMCOLOR)
           {
             if (customColors.size() == 0)
               glColor3f(0,0,1);
@@ -440,32 +418,34 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
               glColor3f(customColors[vertexPositionIndex][0], customColors[vertexPositionIndex][1], customColors[vertexPositionIndex][2]);
           }
 
-          if (renderMode & OBJMESHRENDER_CUSTOMCOLORFACES)
+          if(renderMode & OBJMESHRENDER_CUSTOMCOLORFACES)
             glColor3f(faceColor[0], faceColor[1], faceColor[2]);
 
           // set position
           glVertex3d(v[0],v[1],v[2]);
         }
-        glEnd();
-      }
-      faceCount += groupHandle->getNumFaces();
 
-      if ((renderMode & OBJMESHRENDER_TEXTURE))
+        glEnd();
+
+        faceCount++;
+      }
+
+      if((renderMode & OBJMESHRENDER_TEXTURE))
         glDisable(GL_TEXTURE_2D);
     }
 
-    if (geometryMode & (OBJMESHRENDER_EDGES | OBJMESHRENDER_VERTICES))
+    if(geometryMode & (OBJMESHRENDER_EDGES | OBJMESHRENDER_VERTICES))
     {
       //glDisable(GL_POLYGON_OFFSET_FILL);
     }
   }
 
-  // render vertices
+  // render vertices 
   glDisable(GL_COLOR_MATERIAL);
   glDisable(GL_TEXTURE_2D);
   glDisable(GL_LIGHTING);
 
-  if (geometryMode & OBJMESHRENDER_VERTICES)
+  if(geometryMode & OBJMESHRENDER_VERTICES)
   {
     if (renderSingleGroup < 0)
     {
@@ -473,8 +453,8 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
 
       for(int i = 0; i < numVertices; i++)
       {
-        if (renderMode & OBJMESHRENDER_SELECTION)
-          glLoadName(i);
+        if(renderMode & OBJMESHRENDER_SELECTION)
+          glLoadName(i);  
         glBegin(GL_POINTS);
         Vec3d pos = mesh->getPosition(i);
         glVertex3f(pos[0], pos[1], pos[2]);
@@ -484,13 +464,10 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
     else
     {
       const ObjMesh::Group * groupHandle = mesh->getGroupHandle(renderSingleGroup);
-      auto hiddenIt = hiddenFaces.find(renderSingleGroup);
-      bool hasHidden = (hiddenIt != hiddenFaces.end());
       for(unsigned int iFace = 0; iFace < groupHandle->getNumFaces(); ++iFace)
       {
-        if (hasHidden && hiddenIt->second.find(iFace) != hiddenIt->second.end()) continue;
         const ObjMesh::Face * faceHandle = groupHandle->getFaceHandle(iFace);
-        if (geometryMode & OBJMESHRENDER_VERTICES)
+        if(geometryMode & OBJMESHRENDER_VERTICES)
         {
           glBegin(GL_POINTS);
           for(unsigned int iVertex = 0; iVertex < faceHandle->getNumVertices(); ++iVertex)
@@ -505,25 +482,23 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
     }
   }
 
-  // render edges
+  // render edges 
   if (geometryMode & OBJMESHRENDER_EDGES)
   {
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // render boundary edges on both front and back polygons
-    //glEnable(GL_POLYGON_OFFSET_LINE);          // if polygon is rendered in GL_LINE mode, add an offset to depth value
-    //glPolygonOffset(-1.0, -1.0);               // the depth value is modified to be smaller
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glEnable(GL_POLYGON_OFFSET_LINE);
+    //glPolygonOffset(1.0, 1.0);
+    glPolygonOffset(-1.0, -1.0);
     for(unsigned int i=0; i < mesh->getNumGroups(); i++)
     {
       if ((renderSingleGroup >= 0) && ((int)i != renderSingleGroup))
         continue;
-      auto hiddenIt = hiddenFaces.find(i);
-      bool hasHidden = (hiddenIt != hiddenFaces.end());
 
       const ObjMesh::Group * groupHandle = mesh->getGroupHandle(i);
       for(unsigned int iFace = 0; iFace < groupHandle->getNumFaces(); ++iFace)
       {
-        if (hasHidden && hiddenIt->second.find(iFace) != hiddenIt->second.end()) continue;
         const ObjMesh::Face * faceHandle = groupHandle->getFaceHandle(iFace);
-        if (geometryMode & OBJMESHRENDER_EDGES)
+        if(geometryMode & OBJMESHRENDER_EDGES)
         {
           glBegin(GL_POLYGON);
           for(unsigned int iVertex = 0; iVertex < faceHandle->getNumVertices(); ++iVertex)
@@ -536,27 +511,22 @@ void ObjMeshRender::render(int geometryMode, int renderMode, int renderSingleGro
         }
       }
     }
-//    glDisable(GL_POLYGON_OFFSET_LINE);
-//    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_POLYGON_OFFSET_LINE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   }
 
-//  if (lightingInitiallyEnabled)
-//    glEnable(GL_LIGHTING);
-
-  glPopAttrib(); // restore OpenGL states
+  if (lightingInitiallyEnabled)
+    glEnable(GL_LIGHTING);
 
   //print warnings
-  if (giveWarnings)
-  {
-    if (warnMissingNormals)
-      printf("Warning: used SMOOTH rendering with missing vertex normal(s).\n");
-    if (warnMissingFaceNormals)
-      printf("Warning: used FLAT rendering with missing face normal(s).\n");
-    if (warnMissingTextureCoordinates)
-      printf("Warning: used TEXTURE rendering with missing texture coordinate(s).\n");
-    if (warnMissingTextures)
-      printf("Warning: used TEXTURE rendering with un-setup texture(s).\n");
-  }
+  if(warnMissingNormals)
+    printf("Warning: used SMOOTH rendering with missing vertex normal(s).\n");
+  if(warnMissingFaceNormals)
+    printf("Warning: used FLAT rendering with missing face normal(s).\n");
+  if(warnMissingTextureCoordinates)
+    printf("Warning: used TEXTURE rendering with missing texture coordinate(s).\n");
+  if(warnMissingTextures)
+    printf("Warning: used TEXTURE rendering with un-setup texture(s).\n");
 }
 
 unsigned int ObjMeshRender::createDisplayList(int geometryMode, int renderMode)
@@ -588,25 +558,17 @@ void ObjMeshRender::renderVertex(int index)
 
 void ObjMeshRender::renderGroupEdges(const char * groupName)
 {
-  renderGroupEdges(mesh->getGroupIndex(groupName));
-}
-
-void ObjMeshRender::renderGroupEdges(int groupIndex)
-{
   //get the group
-  const ObjMesh::Group & group = mesh->getGroup(groupIndex);
+  string name(groupName);
+  ObjMesh::Group group = mesh->getGroup(name);
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   glEnable(GL_POLYGON_OFFSET_LINE);
   glPolygonOffset(1.0, 1.0);
 
-  auto hiddenIt = hiddenFaces.find(groupIndex);
-  bool hasHidden = (hiddenIt != hiddenFaces.end());
-
   for( unsigned int iFace = 0; iFace < group.getNumFaces(); ++iFace )
   {
-    if (hasHidden && hiddenIt->second.find(iFace) != hiddenIt->second.end()) continue;
-    const ObjMesh::Face & face = group.getFace(iFace);
+    ObjMesh::Face face = group.getFace(iFace);
 
     glBegin(GL_POLYGON);
     for( unsigned int iVertex = 0; iVertex < face.getNumVertices(); ++iVertex )
@@ -629,7 +591,7 @@ int ObjMeshRender::numTextures()
   {
     const ObjMesh::Material * material = mesh->getMaterialHandle(i);
 
-    if (material->hasTextureFilename())
+    if(material->hasTextureFilename())
       numTextures++;
   }
   return numTextures;
@@ -661,7 +623,7 @@ void ObjMeshRender::loadTextures(int textureMode, std::vector<Texture*> * textur
   for(int i = 0; i < numMaterials; i++)
   {
     material = mesh->getMaterialHandle(i);
-    if (!material->hasTextureFilename())
+    if(!material->hasTextureFilename())
     {
       ownTexture[i] = 0;
       continue;
@@ -703,12 +665,6 @@ ObjMeshRender::Texture * ObjMeshRender::getTextureHandle(int textureIndex)
   return textures[textureIndex];
 }
 
-ObjMeshRender::Texture::~Texture()
-{
-  if (texture.first)
-    glDeleteTextures(1, &(texture.second));
-}
-
 void ObjMeshRender::outputOpenGLRenderCode()
 {
   for(unsigned int i=0; i < mesh->getNumGroups(); i++)
@@ -744,14 +700,14 @@ void ObjMeshRender::outputOpenGLRenderCode()
         Vec3d v = mesh->getPosition(*vertexHandle);
 
         // set normal
-        if ( vertexHandle->hasNormalIndex() )
+        if( vertexHandle->hasNormalIndex() )
         {
           Vec3d normal = mesh->getNormal(*vertexHandle);
           printf("glNormal3d(%f,%f,%f);\n", normal[0], normal[1], normal[2]);
         }
 
         // set texture coordinate
-        if (vertexHandle->hasTextureCoordinateIndex())
+        if(vertexHandle->hasTextureCoordinateIndex())
         {
           Vec3d textureCoordinate = mesh->getTextureCoordinate(*vertexHandle);
           printf("glTexCoord2d(%f,%f);\n", textureCoordinate[0], textureCoordinate[1]);
@@ -772,14 +728,10 @@ void ObjMeshRender::renderNormals(double normalLength)
 
   for(unsigned int i=0; i < mesh->getNumGroups(); i++)
   {
-    auto hiddenIt = hiddenFaces.find(i);
-    bool hasHidden = (hiddenIt != hiddenFaces.end());
-
     const ObjMesh::Group * groupHandle = mesh->getGroupHandle(i);
     for(unsigned int iFace = 0; iFace < groupHandle->getNumFaces(); ++iFace)
     {
-      if (hasHidden && hiddenIt->second.find(iFace) != hiddenIt->second.end()) continue;
-      const ObjMesh::Face & face = groupHandle->getFace(iFace);
+      ObjMesh::Face face = groupHandle->getFace(iFace);
 
       for(unsigned int iVertex = 0; iVertex < face.getNumVertices(); ++iVertex)
       {
@@ -790,7 +742,7 @@ void ObjMeshRender::renderNormals(double normalLength)
 
         // compute endpoint
         Vec3d vnormalOffset;
-        if (vertexHandle->hasNormalIndex())
+        if(vertexHandle->hasNormalIndex())
           vnormalOffset = v + normalLength * diameter * mesh->getNormal(*vertexHandle);
         else
           vnormalOffset = v;
@@ -803,7 +755,7 @@ void ObjMeshRender::renderNormals(double normalLength)
   glEnd();
 }
 
-void ObjMeshRender::setCustomColors(const Vec3d & color)
+void ObjMeshRender::setCustomColors(Vec3d color)
 {
   int numVertices = (int)mesh->getNumVertices();
   customColors.clear();
@@ -811,7 +763,7 @@ void ObjMeshRender::setCustomColors(const Vec3d & color)
     customColors.push_back(color);
 }
 
-void ObjMeshRender::setCustomColors(const vector<Vec3d> & colors)
+void ObjMeshRender::setCustomColors(vector<Vec3d> colors)
 {
   int numVertices = (int)mesh->getNumVertices();
   customColors.clear();
@@ -819,7 +771,7 @@ void ObjMeshRender::setCustomColors(const vector<Vec3d> & colors)
     customColors.push_back(colors[i]);
 }
 
-void ObjMeshRender::setCustomColorsFaces(const Vec3d & color)
+void ObjMeshRender::setCustomColorsFaces(Vec3d color)
 {
   int numFaces = (int)mesh->getNumFaces();
   customColorsFaces.clear();
@@ -827,7 +779,7 @@ void ObjMeshRender::setCustomColorsFaces(const Vec3d & color)
     customColorsFaces.push_back(color);
 }
 
-void ObjMeshRender::setCustomColorsFaces(const vector<Vec3d> & colors)
+void ObjMeshRender::setCustomColorsFaces(vector<Vec3d> colors)
 {
   int numFaces = (int)mesh->getNumFaces();
   customColorsFaces.clear();
@@ -843,7 +795,7 @@ int ObjMeshRender::maxBytesPerPixelInTextures()
   for(int i=0; i<numMaterials; i++)
   {
     const ObjMesh::Material * material = mesh->getMaterialHandle(i);
-    if (!material->hasTextureFilename())
+    if(!material->hasTextureFilename())
       continue;
 
     Texture * tex = getTextureHandle(i);
@@ -855,59 +807,9 @@ int ObjMeshRender::maxBytesPerPixelInTextures()
   return maxBytes;
 }
 
-void ObjMeshRender::renderBoundaryEdges()
+ObjMeshRender::Texture::~Texture()
 {
-
+  if (texture.first) 
+    glDeleteTextures(1, &(texture.second));
 }
 
-void ObjMeshRender::renderCreaseEdges(double thresholdAngle)
-{
-
-}
-
-void ObjMeshRender::renderSilhouetteEdges(double cameraPos[3])
-{
-
-}
-
-unsigned int ObjMeshRender::createBoundaryEdgesDisplayList()
-{
-  unsigned int list = glGenLists(1);
-  glNewList(list, GL_COMPILE);
-  renderBoundaryEdges();
-  glEndList();
-  return list;
-}
-
-unsigned int ObjMeshRender::createCreaseEdgesDisplayList(double thresholdAngle)
-{
-  unsigned int list = glGenLists(1);
-  glNewList(list, GL_COMPILE);
-  renderCreaseEdges(thresholdAngle);
-  glEndList();
-  return list;
-}
-
-unsigned int ObjMeshRender::createSilhouetteEdgesDisplayList(double cameraPos[3])
-{
-  unsigned int list = glGenLists(1);
-  glNewList(list, GL_COMPILE);
-  renderSilhouetteEdges(cameraPos);
-  glEndList();
-  return list;
-}
-
-void ObjMeshRender::unhideFace(int groupID, int faceID)
-{
-  auto it = hiddenFaces.find(groupID);
-  if (it == hiddenFaces.end()) return;
-  it->second.erase(faceID);
-  if (it->second.size() == 0) hiddenFaces.erase(groupID);
-}
-
-bool ObjMeshRender::isFaceHidden(int groupID, int faceID) const
-{
-  auto it = hiddenFaces.find(groupID);
-  if (it == hiddenFaces.end()) return false;
-  return it->second.find(faceID) != it->second.end();
-}

@@ -27,16 +27,16 @@
 * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  Version: 1.2
 */
 
 #include "vec3d.h"
 
-static_assert(sizeof(Vec3d) == sizeof(double) * 3, "Size of Vec3d should be sizeof(double) * 3");
-
 /*
   Given an input vector v, find a unit vector that is orthogonal to it 
 */
-Vec3d Vec3d::findOrthonormalVector() const
+Vec3d Vec3d::findOrthonormalVector()
 {
   // find smallest abs component of v
   int smallestIndex = 0;

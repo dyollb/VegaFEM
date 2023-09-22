@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=CLOTHBW
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-CLOTHBW_OBJECTS=clothBW.o clothBWFromObjMesh.o
+CLOTHBW_OBJECTS=clothBW.o clothBWFromObjMesh.o clothBWMT.o
 
 # the libraries this library depends on
 CLOTHBW_LIBS=minivector objMesh sparseMatrix
 
 # the headers in this library
-CLOTHBW_HEADERS=clothBW.h clothBWFromObjMesh.h
+CLOTHBW_HEADERS=clothBW.h clothBWFromObjMesh.h clothBWMT.h
 
 CLOTHBW_OBJECTS_FILENAMES=$(addprefix $(L)/clothBW/, $(CLOTHBW_OBJECTS))
 CLOTHBW_HEADER_FILENAMES=$(addprefix $(L)/clothBW/, $(CLOTHBW_HEADERS))
@@ -30,7 +30,7 @@ $(L)/clothBW/libclothBW.a: $(CLOTHBW_OBJECTS_FILENAMES)
 	ar r $@ $^; cp $@ $(L)/lib; cp $(L)/clothBW/*.h $(L)/include
 
 $(CLOTHBW_OBJECTS_FILENAMES): %.o: %.cpp $(CLOTHBW_LIB_FILENAMES) $(CLOTHBW_HEADER_FILENAMES)
-	$(CXX) $(CXXFLAGS) -c $(TBB_INCLUDE) $(PARDISO_INCLUDE) $(INCLUDE) $< -o $@
+	$(CXX) $(CXXFLAGS) -c $(INCLUDE) $< -o $@
 
 ifeq ($(CLEANFOLDER), CLOTHBW)
 clean: cleanclothBW

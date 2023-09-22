@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC           *
+ * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC           *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -57,7 +53,7 @@ public:
 
   // evaluates the tangent stiffness matrix in the given deformation configuration
   // "vertexDisplacements" is an array of vertex deformations, of length 3*n, where n is the total number of mesh vertices
-  virtual void ComputeStiffnessMatrix(const double * vertexDisplacements, SparseMatrix * sparseMatrix);
+  virtual void ComputeStiffnessMatrix(double * vertexDisplacements, SparseMatrix * sparseMatrix);
 
   inline void ResetStiffnessMatrix(SparseMatrix * sparseMatrix) {sparseMatrix->ResetToZero();}
 
@@ -67,9 +63,9 @@ public:
   // === the routines below are meant for advanced usage ===
 
   // auxiliary functions, these will add the contributions into 'forces'
-  void AddLinearTermsContribution(const double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
-  void AddQuadraticTermsContribution(const double * vertexDisplacements,SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
-  void AddCubicTermsContribution(const double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
+  void AddLinearTermsContribution(double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
+  void AddQuadraticTermsContribution(double * vertexDisplacements,SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
+  void AddCubicTermsContribution(double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow=-1, int elementHigh=-1);
 
   void GetMatrixAccelerationIndices(int *** row__, int *** column__) { *row__ = row_; *column__ = column_;}
 
@@ -82,6 +78,7 @@ protected:
   int ** column_;
 
   VolumetricMesh * volumetricMesh;
+  StVKInternalForces * stVKInternalForces;
   StVKElementABCD * precomputedIntegrals;
 
   double * lambdaLame;

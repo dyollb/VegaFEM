@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "graph" library , Copyright (C) 2018 USC                              *
+ * "graph" library , Copyright (C) 2015 USC                              *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -34,7 +30,6 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <algorithm>
 #include "matrixIO.h"
 #include "graph.h"
 using namespace std;
@@ -64,17 +59,22 @@ Graph::~Graph()
 {
 }
 
-Graph::Graph(int numVertices_, int numEdges_, const int * edges_, int sortEdgeVertices): numVertices(numVertices_), numEdges(numEdges_)
+Graph::Graph(int numVertices_, int numEdges_, int * edges_, int sortEdgeVertices): numVertices(numVertices_), numEdges(numEdges_)
 {
   //printf("num vertices: %d\n", numVertices);
   for(int i=0; i<numEdges; i++)
   {
     //printf("Edge: %d %d\n", edges_[2*i+0], edges_[2*i+1]);
-    const int * edge = edges_ + 2*i;
-    if (sortEdgeVertices && (edge[0] > edge[1])) // keep the two indices in each edge sorted
-      edges.insert(make_pair(edge[1], edge[0])); 
+    if (sortEdgeVertices)
+    {
+      // keep the two indices in each edge sorted
+      if (edges_[2*i+0] < edges_[2*i+1])
+        edges.insert(make_pair(edges_[2*i+0], edges_[2*i+1])); 
+      else
+        edges.insert(make_pair(edges_[2*i+1], edges_[2*i+0])); 
+    }
     else
-      edges.insert(make_pair(edge[0], edge[1])); 
+      edges.insert(make_pair(edges_[2*i+0], edges_[2*i+1])); 
   }
 
   BuildVertexNeighbors();
@@ -98,8 +98,13 @@ Graph::Graph(const char * filename, int sortEdgeVertices)
 
     //printf("Edge: %d %d\n", vtxA, vtxB);
     // keep the two indices in each edge sorted
-    if (sortEdgeVertices && (vtxA > vtxB))
-      edges.insert(make_pair(vtxB, vtxA));
+    if (sortEdgeVertices)
+    {
+      if (vtxA < vtxB)
+        edges.insert(make_pair(vtxA, vtxB));
+      else
+        edges.insert(make_pair(vtxB, vtxA));
+    }
     else
       edges.insert(make_pair(vtxA, vtxB));
   }
@@ -109,27 +114,7 @@ Graph::Graph(const char * filename, int sortEdgeVertices)
   BuildVertexNeighbors();
 }
 
-Graph::Graph(const SparseMatrix * matrix)
-{
-  numVertices = matrix->GetNumRows();
-  for(int row = 0; row < matrix->GetNumRows(); row++)
-  {
-    int rowLen = matrix->GetRowLength(row);
-    for(int j = 0; j < rowLen; j++)
-    {
-      int col = matrix->GetColumnIndex(row, j);
-      if (row < col)
-        edges.insert(make_pair(row, col));
-      else
-        edges.insert(make_pair(col, row));
-    }
-  }
-  numEdges = edges.size();
-
-  BuildVertexNeighbors();
-}
-
-void Graph::Save(const char * filename) const
+void Graph::Save(const char * filename)
 {
   FILE * fout;
   OpenFile_(filename, &fout, "w");
@@ -147,7 +132,11 @@ void Graph::Save(const char * filename) const
 
 void Graph::BuildVertexNeighbors()
 {
-  vertexNeighbors.assign(numVertices, map<int, int>());
+  vertexNeighbors.clear();
+
+  //printf("Building vertex neighbors.\n");
+  for(int i=0; i<numVertices; i++)
+    vertexNeighbors.push_back(map<int, int>());
 
   for(set<pair<int,int> > :: iterator iter = edges.begin(); iter != edges.end(); iter++)
   {
@@ -171,15 +160,18 @@ void Graph::BuildVertexNeighbors()
 
 void Graph::BuildVertexNeighborsVector()
 {
-  vertexNeighborsVector.assign(numVertices, vector<int>());
+  vertexNeighborsVector.clear();
 
   // create a copy of the data (in a vector), so that can access ith element fast
   for(int i=0; i<numVertices; i++)
+  {
+    vertexNeighborsVector.push_back(vector<int>());
     for(map<int,int> :: iterator iter = vertexNeighbors[i].begin(); iter != vertexNeighbors[i].end(); iter++)
       vertexNeighborsVector[i].push_back(iter->first);
+  }
 }
 
-int Graph::GetMaxDegree() const
+int Graph::GetMaxDegree()
 {
   int maxDegree = 0;
   for(int vtx=0; vtx<numVertices; vtx++)
@@ -188,7 +180,7 @@ int Graph::GetMaxDegree() const
   return maxDegree;
 }
 
-int Graph::GetMinDegree() const
+int Graph::GetMinDegree()
 {
   int minDegree = INT_MAX;
   for(int vtx=0; vtx<numVertices; vtx++)
@@ -197,7 +189,7 @@ int Graph::GetMinDegree() const
   return minDegree;
 }
 
-double Graph::GetAvgDegree() const
+double Graph::GetAvgDegree()
 {
   double avgDegree = 0;
   for(int vtx=0; vtx<numVertices; vtx++)
@@ -205,7 +197,7 @@ double Graph::GetAvgDegree() const
   return avgDegree / numVertices;
 }
 
-double Graph::GetStdevDegree() const
+double Graph::GetStdevDegree()
 {
   double avgDegree_ = GetAvgDegree();
   double std = 0;
@@ -214,55 +206,13 @@ double Graph::GetStdevDegree() const
   return sqrt(std / numVertices);
 }
 
-int Graph::IsNeighbor(int vtx1, int vtx2) const
+int Graph::IsNeighbor(int vtx1, int vtx2)
 {
-  map<int,int> :: const_iterator iter = vertexNeighbors[vtx1].find(vtx2);
+  map<int,int> :: iterator iter = vertexNeighbors[vtx1].find(vtx2);
   if (iter == vertexNeighbors[vtx1].end())
     return 0;
   else
     return iter->second + 1;
-}
-
-std::map<int,int> Graph::GetNeighborhoodWithDistance(int vertex, int neighborhoodSize)
-{
-  set<int> seed = {vertex};
-  return GetNeighborhoodWithDistance(seed, neighborhoodSize);
-}
-
-std::map<int,int> Graph::GetNeighborhoodWithDistance(const std::set<int> & seedVertices, int neighborhoodSize)
-{
-  map<int, int> foundVertices;
-  vector<int> lastLayerVertices;;
-  for(int vtx : seedVertices)
-  {
-    foundVertices.emplace(vtx, 0);
-    lastLayerVertices.push_back(vtx);
-  }
-
-  vector<int> newAffectedVertices;
-  for(int i=1; i<=neighborhoodSize; i++)
-  {
-    for(size_t j = 0; j < lastLayerVertices.size(); j++)
-    {
-      // traverse all neighbors and check if they were already previously inserted
-      int vtx = lastLayerVertices[j];
-      int deg = GetNumNeighbors(vtx);
-      for(int k=0; k<deg; k++)
-      {
-        int vtxNeighbor = GetNeighbor(vtx, k);
-        if (foundVertices.find(vtxNeighbor) == foundVertices.end())
-        {
-          // discovered new vertex
-          newAffectedVertices.push_back(vtxNeighbor);
-          foundVertices.emplace(vtxNeighbor, i);
-        }
-      }
-    }
-
-    lastLayerVertices.swap(newAffectedVertices);
-    newAffectedVertices.clear();
-  }
-  return foundVertices;
 }
 
 void Graph::ExpandNeighbors()
@@ -295,7 +245,7 @@ void Graph::ExpandNeighbors()
   BuildVertexNeighbors();
 }
 
-void Graph::PrintInfo() const
+void Graph::PrintInfo()
 {
   printf("Graph vertices: %d\n", numVertices);
   printf("Graph edges: %d\n", numEdges);
@@ -305,7 +255,7 @@ void Graph::PrintInfo() const
   printf("Graph degree stdev: %G\n", GetStdevDegree());
 }
 
-void Graph::GetLaplacian(SparseMatrix ** L, int scaleRows) const
+void Graph::GetLaplacian(SparseMatrix ** L, int scaleRows)
 {
   SparseMatrixOutline outline(3*numVertices);
   for(int i=0; i<numVertices; i++)
@@ -331,7 +281,7 @@ void Graph::GetLaplacian(SparseMatrix ** L, int scaleRows) const
   *L = new SparseMatrix(&outline);
 }
 
-Graph * Graph::CartesianProduct(Graph & graph2) const
+Graph * Graph::CartesianProduct(Graph & graph2)
 {
   int numProductVertices = numVertices * graph2.numVertices;
   int numProductEdges = numEdges * graph2.numVertices + numVertices * graph2.numEdges;
@@ -375,240 +325,93 @@ Graph * Graph::CartesianProduct(Graph & graph2) const
 }
 
 // cluster given vertices into connected components
-void Graph::Cluster(const set<int> & vertices, vector<set<int> > & clusters) const
+void Graph::Cluster(std::set<int> & vertices, vector<set<int> > & clusters)
 {
   clusters.clear();
-
-  set<int> remainingVertices = vertices;
-
-  while(remainingVertices.size() > 0)
+  for(set<int> :: iterator iter = vertices.begin(); iter != vertices.end(); iter++)
   {
-    int seed = *remainingVertices.begin();
-    clusters.resize(clusters.size() + 1);
-    set<int> & curCluster = clusters.back();
-
-    vector<int> oldFront, front;
-
-    curCluster.insert(seed);
-    remainingVertices.erase(seed);
-    oldFront.push_back(seed);
-
-    while (oldFront.size() > 0)
+    int vtx = *iter;
+    int found = -1;
+    for(int i=0; i<(int)clusters.size(); i++)
     {
-      // create the front
-      front.clear();
-      for(size_t i = 0; i < oldFront.size(); i++)
+      if (clusters[i].find(vtx) != clusters[i].end())
       {
-        int node = oldFront[i];
-        for(size_t j = 0; j < vertexNeighborsVector[node].size(); j++)
+        found = i;
+        break;
+      }
+      for(set<int> :: iterator iter2 = clusters[i].begin(); iter2 != clusters[i].end(); iter2++)
+      {
+        if (IsNeighbor(vtx, *iter2))
         {
-          int neighbor = vertexNeighborsVector[node][j];
-          if (remainingVertices.find(neighbor) != remainingVertices.end())
-          {
-            front.push_back(neighbor);
-            remainingVertices.erase(neighbor);
-            curCluster.insert(neighbor);
-          }
+          found = i;
+          break;
         }
       }
-      oldFront = front;
+    }
+
+    if (found == -1)
+    {
+     set<int> newCluster;
+     newCluster.insert(vtx);
+     clusters.push_back(newCluster);
+    }
+    else
+    {
+      clusters[found].insert(vtx);
     }
   }
 }
 
-int Graph::GetCartesianProductVertexIndex(int vertex1, int vertex2) const
+int Graph::GetCartesianProductVertexIndex(int vertex1, int vertex2)
 {
   return vertex2 * numVertices + vertex1;
 }
 
-void Graph::GetCartesianProductVertexIndexComponents(int productVertex, int * vertex1, int * vertex2) const
+void Graph::GetCartesianProductVertexIndexComponents(int productVertex, int * vertex1, int * vertex2)
 {
   *vertex2 = productVertex / numVertices;
   *vertex1 = productVertex % numVertices;
 }
 
-void Graph::ShortestDistance(const std::set<int> & seedVertices, std::vector<int> & distances) const
+void Graph::ShortestPath(std::set<int> & seedVertices, std::vector<int> & distances)
 {
-  distances.assign(numVertices, INT_MAX);
-  for(set<int> :: const_iterator iter = seedVertices.begin(); iter != seedVertices.end(); iter++)
+  distances.clear();
+  distances.reserve(numVertices);
+  
+  for(set<int> :: iterator iter = seedVertices.begin(); iter != seedVertices.end(); iter++)
     distances[*iter] = 0;
 
+  set<int> visitedVertices = seedVertices;
+
   int distance = 0;
-  vector<int> oldFront, front;
-  oldFront.reserve(numVertices);
-  front.reserve(numVertices);
-  oldFront.insert(oldFront.end(), seedVertices.begin(), seedVertices.end());
-  while (oldFront.size() > 0)
+  set<int> oldFront, front;
+  oldFront = seedVertices;
+  while ((int)visitedVertices.size() != numVertices)
   {
     distance++;
 
     // create the front
     front.clear();
-    for(size_t i = 0; i < oldFront.size(); i++)
+    for(set<int> :: iterator iter = oldFront.begin(); iter != oldFront.end(); iter++)
     {
-      int node = oldFront[i];
-      for(size_t j = 0; j < vertexNeighborsVector[node].size(); j++)
+      int node = *iter;
+      for(int i=0; i < (int)vertexNeighborsVector[node].size(); i++)
       {
-        int neighbor = vertexNeighborsVector[node][j];
-        if (distances[neighbor] == INT_MAX)
-        {
-          front.push_back(neighbor);
-          distances[neighbor] = distance;
-        }
+        int neighbor = vertexNeighborsVector[node][i];
+        if (visitedVertices.find(neighbor) == visitedVertices.end())
+          front.insert(neighbor);
       }
+    }
+
+    // write distance to front
+    for(set<int> :: iterator iter = front.begin(); iter != front.end(); iter++)
+    {
+      int node = *iter;
+      visitedVertices.insert(node);
+      distances[node] = distance;
     }
 
     oldFront = front; 
   }
 }
 
-bool Graph::FindShortestPath(const std::set<int> & seedVertices, const std::set<int> & destinationVertices, std::vector<int> * path) const
-{
-  if (path)
-    path->clear();
-  int distance = 0;
-  vector<int> oldFront, front;
-  oldFront.insert(oldFront.end(), seedVertices.begin(), seedVertices.end());
-  map<int, int> parentNode;
-  for(set<int>::const_iterator it = seedVertices.begin(); it != seedVertices.end(); it++)
-  {
-    parentNode[*it] = -1;
-    if (destinationVertices.find(*it) != destinationVertices.end()) // one of the start locations is the destination
-    {
-      if (path)
-        path->push_back(*it);
-      return true;
-    }
-  }
-
-  while (oldFront.size() > 0)
-  {
-    distance++;
-
-    // create the front
-    front.clear();
-    for(size_t i = 0; i < oldFront.size(); i++)
-    {
-      int node = oldFront[i];
-      for(size_t j = 0; j < vertexNeighborsVector[node].size(); j++)
-      {
-        int neighbor = vertexNeighborsVector[node][j];
-        if (parentNode.find(neighbor) == parentNode.end())
-        {
-          front.push_back(neighbor);
-          parentNode.insert(pair<int, int>(neighbor, node));
-          if (destinationVertices.find(neighbor) != destinationVertices.end()) // we reach the destination
-          {
-            if (path)
-            {
-              int parent = neighbor, curNode = 0;
-              do
-              {
-                curNode = parent;
-                path->push_back(curNode); // push nodes into path in a reverse order
-                parent = parentNode[curNode];
-              } while(parent >= 0);
-              reverse(path->begin(), path->end()); // recover the correct order
-            }
-            return true;
-          }
-        }
-      }
-    }
-
-    oldFront = front;
-  }
-
-  return false;
-}
-
-bool Graph::FindLocalShortestPath(const std::set<int> & localVertices, const std::set<int> & seedVertices, const std::set<int> & destinationVertices, std::vector<int> * path) const
-{
-  if (path)
-    path->clear();
-  int distance = 0;
-  vector<int> oldFront, front;
-  map<int, int> parentNode;
-
-  for(set<int>::const_iterator it = seedVertices.begin(); it != seedVertices.end(); it++)
-  {
-    if (localVertices.find(*it) == localVertices.end())
-      continue; // the seed vertex is not inside localVertices
-    oldFront.push_back(*it);
-    parentNode[*it] = -1;
-    if (destinationVertices.find(*it) != destinationVertices.end()) // one of the start locations is the destination
-    {
-      if (path)
-        path->push_back(*it);
-      return true;
-    }
-  }
-
-  while (oldFront.size() > 0)
-  {
-    distance++;
-
-    // create the front
-    front.clear();
-    for(size_t i = 0; i < oldFront.size(); i++)
-    {
-      int node = oldFront[i];
-      for(size_t j = 0; j < vertexNeighborsVector[node].size(); j++)
-      {
-        int neighbor = vertexNeighborsVector[node][j];
-        if (localVertices.find(neighbor) == localVertices.end())
-          continue;
-        if (parentNode.find(neighbor) == parentNode.end())
-        {
-          front.push_back(neighbor);
-          parentNode.insert(pair<int, int>(neighbor, node));
-          if (destinationVertices.find(neighbor) != destinationVertices.end()) // we reach the destination
-          {
-            if (path)
-            {
-              int parent = neighbor, curNode = 0;
-              do
-              {
-                curNode = parent;
-                path->push_back(curNode); // push nodes into path in a reverse order
-                parent = parentNode[curNode];
-              } while(parent >= 0);
-              reverse(path->begin(), path->end()); // recover the correct order
-            }
-            return true;
-          }
-        }
-      }
-    }
-
-    oldFront = front;
-  }
-
-  return false;
-}
-
-
-void Graph::GetConnectedComponent(int vtx, std::set<int> &connectedVertices) const
-{
-  std::vector<int> Q;
-  std::set<int> visited;
-  size_t start = 0;
-
-  Q.push_back(vtx);
-  visited.insert(vtx);
-
-  while (Q.size() - start > 0) {
-    int v = Q[start];
-    start++;
-
-    for (int i = 0; i < (int)vertexNeighborsVector[v].size(); i++) {
-      int c = vertexNeighborsVector[v][i];
-      if (visited.find(c) == visited.end()) {
-        Q.push_back(c);
-        visited.insert(c);
-      }
-    }
-  }
-
-  connectedVertices = visited;
-}

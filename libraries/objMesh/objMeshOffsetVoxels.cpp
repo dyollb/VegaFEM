@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
+ * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Christopher Twigg, Daniel Schroeder      *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -48,15 +44,15 @@
 #include <string.h>
 using namespace std;
 
-ObjMeshOffsetVoxels::ObjMeshOffsetVoxels(const ObjMesh * objMesh_, const int resolution_[3], int depth_, Vec3d bmin_, Vec3d bmax_ )
+ObjMeshOffsetVoxels::ObjMeshOffsetVoxels( ObjMesh * objMesh_, int resolution_[3], int depth_, Vec3d bmin_, Vec3d bmax_ )
 {
-  objMesh = objMesh_;
+  objMesh = new ObjMesh(*objMesh_);
   init(resolution_, depth_, bmin_, bmax_);
 }
 
-ObjMeshOffsetVoxels::ObjMeshOffsetVoxels(const ObjMesh * objMesh_, const int resolution_[3], int depth_, double expansionFactor )
+ObjMeshOffsetVoxels::ObjMeshOffsetVoxels( ObjMesh * objMesh_, int resolution_[3], int depth_, double expansionFactor )
 {
-  objMesh = objMesh_;
+  objMesh = new ObjMesh(*objMesh_);
 
   // build mesh bounding box
   Vec3d bmin_, bmax_;
@@ -65,7 +61,7 @@ ObjMeshOffsetVoxels::ObjMeshOffsetVoxels(const ObjMesh * objMesh_, const int res
   init(resolution_, depth_, bmin_, bmax_);
 }
 
-void ObjMeshOffsetVoxels::init(const int resolution_[3], int depth_, Vec3d bmin_, Vec3d bmax_)
+void ObjMeshOffsetVoxels::init(int resolution_[3], int depth_, Vec3d bmin_, Vec3d bmax_)
 {
   resolution[0] = resolution_[0];
   resolution[1] = resolution_[1];
@@ -78,8 +74,16 @@ void ObjMeshOffsetVoxels::init(const int resolution_[3], int depth_, Vec3d bmin_
   //cout << "Resolution is " << resolution[0] << " x " << resolution[1] << " x " << resolution[2] << " ..." << endl;
 
   //cout << "Checking if mesh is triangular... ";
-  vector<Vec3i> triangles;
-  objMesh->exportTriangles(triangles);
+  if (!(objMesh->isTriangularMesh()))
+  {
+    //cout << "mesh was not triangular: triangulating... ";
+    objMesh->triangulate();
+    //cout << "done" << endl;
+  }
+  else
+  {
+    //cout << "yes" << endl;
+  }
 
   side = bmax - bmin;
   inc[0] = side[0] / resolution[0];
@@ -93,81 +97,85 @@ void ObjMeshOffsetVoxels::init(const int resolution_[3], int depth_, Vec3d bmin_
   // for every triangle, find the voxel containing its center of mass
   // then, grow the voxels until they don't intersect the triangle any more
 
-  voxels.clear(); // will contain voxels intersecting the triangles
+  voxels.clear(); // will contain voxels intersecting the triangles 
 
   // local search helpers:
   set<voxel> checkedVoxels; // used to mark what voxels have already been visited
   vector<voxel> scheduledVoxels; // contains voxels still to be processed
-  for(size_t i = 0; i < triangles.size(); i++)
+  for (unsigned int i=0; i<objMesh->getNumGroups(); i++)
   {
-    Vec3i t = triangles[i];
-    Vec3d p0 = objMesh->getPosition(t[0]);
-    Vec3d p1 = objMesh->getPosition(t[1]);
-    Vec3d p2 = objMesh->getPosition(t[2]);
-    TriangleBasic triangle(p0,p1,p2);
-
-    Vec3d center = 1.0 / 3 * (p0 + p1 + p2);
-    Vec3d relCenter = center-bmin;
-
-    // find voxel containing center
-    int vi,vj,vk;
-    vi = (int)(relCenter[0] / inc[0]);
-    vj = (int)(relCenter[1] / inc[1]);
-    vk = (int)(relCenter[2] / inc[2]);
-
-    checkedVoxels.clear();
-    checkedVoxels.insert(voxel(vi,vj,vk));
-
-    scheduledVoxels.clear();
-    scheduledVoxels.push_back(voxel(vi,vj,vk));
-
-    // while there are still some scheduled voxels:
-    //   take one
-    //   check if intersecting the triangle
-    //   if yes
-    //     add voxel to voxels
-    //     queue all neighbors that haven't been visited yet
-
-    while (!scheduledVoxels.empty())
+    const ObjMesh::Group * getGroupHandle = objMesh->getGroupHandle(i);
+      
+    for (unsigned int j=0; j<getGroupHandle->getNumFaces(); j++)
     {
-      voxel v = scheduledVoxels.back();
-      scheduledVoxels.pop_back();
+      Vec3d p0 = objMesh->getPosition(getGroupHandle->getFace(j).getVertex(0).getPositionIndex());
+      Vec3d p1 = objMesh->getPosition(getGroupHandle->getFace(j).getVertex(1).getPositionIndex());
+      Vec3d p2 = objMesh->getPosition(getGroupHandle->getFace(j).getVertex(2).getPositionIndex());
+      TriangleBasic triangle(p0,p1,p2);
 
-      // make bounding box for voxel
-      Vec3d bbmin = bmin + Vec3d(v.first * inc[0], v.second * inc[1], v.third * inc[2]);
-      BoundingBox bbox(bbmin, bbmin + inc);
+      Vec3d center = 1.0 / 3 * (p0 + p1 + p2);
+      Vec3d relCenter = center-bmin;
 
-      if (triangle.doesIntersectBox(bbox)) // intersection test
+      // find voxel containing center
+      int vi,vj,vk;
+      vi = (int)(relCenter[0] / inc[0]);
+      vj = (int)(relCenter[1] / inc[1]);
+      vk = (int)(relCenter[2] / inc[2]);
+
+      checkedVoxels.clear();
+      checkedVoxels.insert(voxel(vi,vj,vk));
+
+      scheduledVoxels.clear();
+      scheduledVoxels.push_back(voxel(vi,vj,vk));
+
+      // while there are still some scheduled voxels:
+      //   take one
+      //   check if intersecting the triangle
+      //   if yes
+      //     add voxel to voxels
+      //     queue all neighbors that haven't been visited yet
+     
+      while (!scheduledVoxels.empty())
       {
-  // add the voxel to the final list of hits
-        voxels.insert(v);
-        // queue all neighbors of v, and also put them into checkedVoxels
-        // (but don't do anything if they have already been queued)
-        voxel neighbor;
-        #define PROCESS(ii,jj,kk)\
-        neighbor = voxel(v.first+(ii),v.second+(jj),v.third+(kk));\
-        if ((neighbor.first >= 0) && (neighbor.first <= resolution[0]) &&\
-            (neighbor.second >= 0) && (neighbor.second <= resolution[1]) &&\
-            (neighbor.third >= 0) && (neighbor.third <= resolution[2])) \
-        {\
-          if (checkedVoxels.find(neighbor) == checkedVoxels.end())\
-          {\
-            checkedVoxels.insert(neighbor);\
-            scheduledVoxels.push_back(neighbor);\
-          }\
-        }
-        for (int iii=-1; iii<=1; iii++)
-          for (int jjj=-1; jjj<=1; jjj++)
-            for (int kkk=-1; kkk<=1; kkk++)
-            {
-              if ((iii == 0) && (jjj ==0) && (kkk==0))
-                continue;
-              PROCESS(iii,jjj,kkk)
-            }
-      }
-    }
+        voxel v = scheduledVoxels.back();
+        scheduledVoxels.pop_back();
+     
+        // make bounding box for voxel
+        Vec3d bbmin = bmin + Vec3d(v.first * inc[0], v.second * inc[1], v.third * inc[2]);
+        BoundingBox bbox(bbmin, bbmin + inc);
 
-    // now, voxels contains all voxels that intersect the given triangle (plus everything from previous triangles)
+        if (triangle.doesIntersectBox(bbox)) // intersection test
+        {
+	  // add the voxel to the final list of hits
+          voxels.insert(v);
+          // queue all neighbors of v, and also put them into checkedVoxels
+          // (but don't do anything if they have already been queued)
+          voxel neighbor;
+          #define PROCESS(ii,jj,kk)\
+          neighbor = voxel(v.first+(ii),v.second+(jj),v.third+(kk));\
+          if ((neighbor.first >= 0) && (neighbor.first <= resolution[0]) &&\
+              (neighbor.second >= 0) && (neighbor.second <= resolution[1]) &&\
+              (neighbor.third >= 0) && (neighbor.third <= resolution[2])) \
+          {\
+            if (checkedVoxels.find(neighbor) == checkedVoxels.end())\
+            {\
+              checkedVoxels.insert(neighbor);\
+              scheduledVoxels.push_back(neighbor);\
+            }\
+          }
+          for (int iii=-1; iii<=1; iii++)
+            for (int jjj=-1; jjj<=1; jjj++)
+              for (int kkk=-1; kkk<=1; kkk++)
+              {
+                if ((iii == 0) && (jjj ==0) && (kkk==0))
+                  continue;
+                PROCESS(iii,jjj,kkk)
+              }
+        }  
+      }
+
+      // now, voxels contains all voxels that intersect the given triangle (plus everything from previous triangles) 
+    }
   }
 
   // now, voxels contains all voxels intersecting any triangle
@@ -190,9 +198,9 @@ void ObjMeshOffsetVoxels::init(const int resolution_[3], int depth_, Vec3d bmin_
           (neighbor.second >= 0) && (neighbor.second <= resolution[1]) &&\
           (neighbor.third >= 0) && (neighbor.third <= resolution[2])) \
       {\
-        voxeli.insert(neighbor);\
+	voxeli.insert(neighbor);\
       }
-
+    
     set<voxel>::iterator vox;
 
     for (vox = voxels.begin(); vox != voxels.end(); ++vox) // over all members of voxels
@@ -210,7 +218,7 @@ void ObjMeshOffsetVoxels::init(const int resolution_[3], int depth_, Vec3d bmin_
   //cout << "Building unique list of faces..." << endl;
   // build unique list of faces
 
-  buildUniqueListOfFaces();
+  buildUniqueListOfFaces(); 
 }
 
 void ObjMeshOffsetVoxels::emptyComponents(vector<Vec3d> & componentSeeds, vector<int> & componentSize, bool interiorOnly)
@@ -277,7 +285,7 @@ bool ObjMeshOffsetVoxels::floodFillFromSet(Vec3d seed, set<voxel> & voxelSet)
     printf("Warning: flood-filling seed is outside the bounding box. Performing no flood-fill.\n");
     return false;
   }
-
+  
 
   voxel seedVoxel(vi,vj,vk);
 
@@ -293,7 +301,7 @@ bool ObjMeshOffsetVoxels::floodFillFromSet(Vec3d seed, set<voxel> & voxelSet)
     queue.erase(vox);
 
     voxel neighbor;
-
+    
     //printf("vox: %d %d %d\n",vox.first,vox.second,vox.third);
 
     // process all 8 neighbors
@@ -330,16 +338,16 @@ void ObjMeshOffsetVoxels::buildUniqueListOfFaces()
 {
   surfaceFaces.clear();
   interiorFaces.clear();
-
+  
   set<voxel>::iterator vox;
   for (vox = voxels.begin(); vox != voxels.end(); ++vox) // over all members of voxels
   {
     // for each face of vox:
     //   if already on the list of surface faces, erase it from there, and add it among interior faces
     //   else add it among surface faces
-
+  
     //cout << "Voxel: " << vox->first << " " << vox->second << " " << vox->third << endl;
-
+  
     gridPoint pmin(vox->first,vox->second,vox->third);
     gridPoint pmax(vox->first+1,vox->second+1,vox->third+1);
 
@@ -347,14 +355,14 @@ void ObjMeshOffsetVoxels::buildUniqueListOfFaces()
     gridPoint p1(pmax.first,pmin.second,pmin.third);
     gridPoint p2(pmax.first,pmax.second,pmin.third);
     gridPoint p3(pmin.first,pmax.second,pmin.third);
-
+  
     gridPoint p4(pmin.first,pmin.second,pmax.third);
     gridPoint p5(pmax.first,pmin.second,pmax.third);
     gridPoint p6(pmax.first,pmax.second,pmax.third);
     gridPoint p7(pmin.first,pmax.second,pmax.third);
-
+  
     TopologicalFace * face;
-
+    
     #define PROCESS_FACE(q0,q1,q2,q3)\
     face = new TopologicalFace((q0),(q1),(q2),(q3));\
     if (surfaceFaces.find(*face) != surfaceFaces.end())\
@@ -432,7 +440,7 @@ ObjMesh * ObjMeshOffsetVoxels::surfaceOffsetMesh()
   // now, vertices contains all vertices with no duplications
 
   // create default group
-  objMesh->addGroup("Default");
+  objMesh->addGroup("Default");    
 
   // add all vertices into a map, together with their corresponding position
   // also, add vertices to objMesh
@@ -523,7 +531,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
   // create a list of vertices in all voxels
   set<gridPoint> vertices;
   // insert all voxel vertices
-  set<voxel>::iterator aVoxel;
+  set<voxel>::iterator aVoxel; 
   for (aVoxel = voxels.begin(); aVoxel != voxels.end(); ++aVoxel) // over all voxels
   {
     unsigned int i1,j1,k1;
@@ -540,18 +548,18 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
     vertices.insert(gridPoint(i1+1,j1,k1+1));
     vertices.insert(gridPoint(i1+1,j1+1,k1+1));
     vertices.insert(gridPoint(i1,j1+1,k1+1));
-  }
-
+  } 
+  
   // now, vertices contains all voxel vertices with no duplications
 
-  cout << "Num voxels: " << voxels.size() << " Num voxel vertices: " << vertices.size() << endl;
+  cout << "Num voxels: " << voxels.size() << " Num voxel vertices: " << vertices.size() << endl; 
 
   // open up the objMesh for the output surface mesh
   ObjMesh * objMesh = new ObjMesh();
 
   // create default group
   objMesh->addGroup("Default");
-
+  
   // add all voxel vertices into a map, together with their corresponding index (i.e. serial number of a voxel vertex in the set order)
   map<gridPoint,int> vertices2;
   set<gridPoint>:: iterator v; // will run over all voxel vertices
@@ -571,8 +579,8 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
 
     // write vertex to file
     fout << setprecision (16) << position << " " << pos[0] << " " << pos[1] << " " << pos[2] << endl;
-  }
-
+  } 
+  
   fout << endl;
   fout << "*ELEMENTS" << endl;
   fout << "CUBIC" << endl;
@@ -591,7 +599,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
 
     #define PROCESS_CORNER(di,dj,dk)\
     index = 1+(vertices2.find(gridPoint(i1+(di),j1+(dj),k1+(dk))))->second;\
-    fout << " " << index;
+    fout << " " << index;    
 
     PROCESS_CORNER(0,0,0);
     PROCESS_CORNER(1,0,0);
@@ -605,7 +613,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
     fout << endl;
 
     position++;
-  }
+  } 
 
   fout.close();
 
@@ -625,12 +633,12 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
   // for every vertex of the mesh, find what voxel it is in
   // then find indices of the vertices of that voxel
   // and compute the barycentric coordinates
-
+  
   for (unsigned int i=0; i < objMesh->getNumVertices(); i++) // over all vertices of the mesh
   {
     Vec3d pos = objMesh->getPosition(i);
     unsigned int i1,j1,k1;
-
+    
     Vec3d relPos = pos-bmin;
 
     // find voxel containing 'pos'
@@ -640,9 +648,9 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
 
     // compute barycentric coordinates
     Vec3d w = pos - (bmin + Vec3d(i1 * inc[0], j1 * inc[1], k1 * inc[2]));
-    double alpha = w[0] / inc[0];
-    double beta = w[1] / inc[1];
-    double gamma = w[2] / inc[2];
+    double alpha = w[0] / inc[0];     
+    double beta = w[1] / inc[1];     
+    double gamma = w[2] / inc[2];     
 
     unsigned int c000 = vertices2.find(gridPoint(i1+0,j1+0,k1+0))->second;
     unsigned int c100 = vertices2.find(gridPoint(i1+1,j1+0,k1+0))->second;
@@ -687,8 +695,8 @@ void ObjMeshOffsetVoxels::generateCubicMesh(const string & filenameVeg, const st
     int index[4];
     for (int i=0; i<4; i++)
       index[i] = (vertices2.find(face->vertex(i)))->second;
-
-    std::pair< bool, unsigned int > texPos(false,0); // no textures
+ 
+    std::pair< bool, unsigned int > texPos(false,0); // no textures 
     std::pair< bool, unsigned int > normal(false,0); // no normals
 
 /*
@@ -735,7 +743,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
   // create a list of vertices in all voxels
   set<gridPoint> vertices;
   // insert all voxel vertices
-  set<voxel>::iterator aVoxel;
+  set<voxel>::iterator aVoxel; 
   for (aVoxel = voxels.begin(); aVoxel != voxels.end(); ++aVoxel) // over all voxels
   {
     unsigned int i1,j1,k1;
@@ -752,18 +760,16 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
     vertices.insert(gridPoint(i1+1,j1,k1+1));
     vertices.insert(gridPoint(i1+1,j1+1,k1+1));
     vertices.insert(gridPoint(i1,j1+1,k1+1));
-  }
+  } 
 
   // now, "vertices" contains all voxel vertices with no duplications
-  //cout << "Num voxels: " << voxels.size() << " Num voxel vertices: " << vertices.size() << endl;
+  //cout << "Num voxels: " << voxels.size() << " Num voxel vertices: " << vertices.size() << endl; 
 
   // creates an empty objMesh (for the output surface mesh)
-  if (surfaceMesh)
-  {
-    *surfaceMesh = new ObjMesh();
+  *surfaceMesh = new ObjMesh();
+
   // create default group
-    (*surfaceMesh)->addGroup("Default");
-  }
+  (*surfaceMesh)->addGroup("Default");
 
   // add all voxel vertices into a map, together with their corresponding index (i.e. serial number of a voxel vertex in the set order)
   map<gridPoint,int> vertices2;
@@ -776,8 +782,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
   {
     vertices2.insert(pair<gridPoint,int>(*v,position));
     Vec3d pos = bmin + Vec3d(v->first*inc[0], v->second*inc[1], v->third*inc[2]);
-    if (surfaceMesh)
-      (*surfaceMesh)->addVertexPosition(pos);
+    (*surfaceMesh)->addVertexPosition(pos);
 
     (*cubeVertices)[3*position+0] = pos[0];
     (*cubeVertices)[3*position+1] = pos[1];
@@ -785,7 +790,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
 
     //cout << "Position " << position << ": " << pos << endl;
     position++;
-  }
+  } 
 
   unsigned int index;
   position = 0;
@@ -811,7 +816,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
     PROCESS_CORNER_SHORT(0,1,1); (*cubes)[8*position+7] = index;
 
     position++;
-  }
+  } 
 
   // generate the barycentric masks
 
@@ -819,10 +824,8 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
   // then, find indices of the vertices of that voxel
   // and compute the barycentric coordinates
 
-  if (interpolationVertices)
-    *interpolationVertices = (int*) malloc (sizeof(int) * 8 * objMesh->getNumVertices());
-  if (interpolationWeights)
-    *interpolationWeights = (double*) malloc (sizeof(double) * 8 * objMesh->getNumVertices());
+  *interpolationVertices = (int*) malloc (sizeof(int) * 8 * objMesh->getNumVertices());
+  *interpolationWeights = (double*) malloc (sizeof(double) * 8 * objMesh->getNumVertices());
 
   for (unsigned int i=0; i < objMesh->getNumVertices(); i++) // over all vertices of the mesh
   {
@@ -838,9 +841,9 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
 
     // compute barycentric coordinates
     Vec3d w = pos - (bmin + Vec3d(i1 * inc[0], j1 * inc[1], k1 * inc[2]));
-    double alpha = w[0] / inc[0];
-    double beta = w[1] / inc[1];
-    double gamma = w[2] / inc[2];
+    double alpha = w[0] / inc[0];     
+    double beta = w[1] / inc[1];     
+    double gamma = w[2] / inc[2];     
 
     unsigned int c000, c100, c110, c010, c001, c101, c111, c011;
     unsigned int * cArray[8] = { &c000, &c100, &c110, &c010, &c001, &c101, &c111, &c011 };
@@ -874,29 +877,23 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
     double f111 = (alpha)*(beta)*(gamma);
     double f011 = (1-alpha)*(beta)*(gamma);
 
-    if (interpolationVertices)
-    {
-      (*interpolationVertices)[8*i+0] = c000;
-      (*interpolationVertices)[8*i+1] = c100;
-      (*interpolationVertices)[8*i+2] = c110;
-      (*interpolationVertices)[8*i+3] = c010;
-      (*interpolationVertices)[8*i+4] = c001;
-      (*interpolationVertices)[8*i+5] = c101;
-      (*interpolationVertices)[8*i+6] = c111;
-      (*interpolationVertices)[8*i+7] = c011;
-    }
+    (*interpolationVertices)[8*i+0] = c000;
+    (*interpolationVertices)[8*i+1] = c100;
+    (*interpolationVertices)[8*i+2] = c110;
+    (*interpolationVertices)[8*i+3] = c010;
+    (*interpolationVertices)[8*i+4] = c001;
+    (*interpolationVertices)[8*i+5] = c101;
+    (*interpolationVertices)[8*i+6] = c111;
+    (*interpolationVertices)[8*i+7] = c011;
 
-    if (interpolationWeights)
-    {
-      (*interpolationWeights)[8*i+0] = f000;
-      (*interpolationWeights)[8*i+1] = f100;
-      (*interpolationWeights)[8*i+2] = f110;
-      (*interpolationWeights)[8*i+3] = f010;
-      (*interpolationWeights)[8*i+4] = f001;
-      (*interpolationWeights)[8*i+5] = f101;
-      (*interpolationWeights)[8*i+6] = f111;
-      (*interpolationWeights)[8*i+7] = f011;
-    }
+    (*interpolationWeights)[8*i+0] = f000;
+    (*interpolationWeights)[8*i+1] = f100;
+    (*interpolationWeights)[8*i+2] = f110;
+    (*interpolationWeights)[8*i+3] = f010;
+    (*interpolationWeights)[8*i+4] = f001;
+    (*interpolationWeights)[8*i+5] = f101;
+    (*interpolationWeights)[8*i+6] = f111;
+    (*interpolationWeights)[8*i+7] = f011;
   }
 
   // by now, surfaceFaces contains a unique list of all surface faces
@@ -908,7 +905,7 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
     for (int i=0; i<4; i++)
       index[i] = (vertices2.find(face->vertex(i)))->second;
 
-    std::pair< bool, unsigned int > texPos(false,0); // no textures
+    std::pair< bool, unsigned int > texPos(false,0); // no textures 
     std::pair< bool, unsigned int > normal(false,0); // no normals
 
     /*
@@ -936,16 +933,13 @@ void ObjMeshOffsetVoxels::generateCubicMesh(int * numCubeVertices, double ** cub
     newFace.addVertex( ObjMesh::Vertex( index[2], texPos, normal ) );
     newFace.addVertex( ObjMesh::Vertex( index[3], texPos, normal ) );
 
-    if (surfaceMesh)
-      (*surfaceMesh)->addFaceToGroup(newFace,0);
+    (*surfaceMesh)->addFaceToGroup(newFace,0);
   }
 
   // search if there already is "default" material; if there is not, add it
-  if (surfaceMesh)
-  {
-    (*surfaceMesh)->addDefaultMaterial();
-    (*surfaceMesh)->computeBoundingBox();
-  }
+  (*surfaceMesh)->addDefaultMaterial();
+
+  (*surfaceMesh)->computeBoundingBox();
 }
 
 void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInterp, const string & inputObjMesh)
@@ -956,7 +950,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
   set<gridPoint> vertices;
 
   // insert all voxel vertices
-  set<voxel>::iterator aVoxel;
+  set<voxel>::iterator aVoxel; 
   for (aVoxel = voxels.begin(); aVoxel != voxels.end(); ++aVoxel) // over all voxels
   {
     unsigned int i1,j1,k1;
@@ -973,8 +967,8 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     vertices.insert(gridPoint(i1+1,j1,k1+1));
     vertices.insert(gridPoint(i1+1,j1+1,k1+1));
     vertices.insert(gridPoint(i1,j1+1,k1+1));
-  }
-
+  } 
+  
   // now, vertices contains all voxel vertices with no duplications
 
   // add all voxel vertices into a map, together with their corresponding index (i.e. serial number of a voxel vertex in the set order)
@@ -987,8 +981,8 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     //Vec3d pos = bmin + Vec3d(v->first*inc[0], v->second*inc[1], v->third*inc[2]);
     //cout << "Position " << position << ": " << pos << endl;
     position++;
-  }
-
+  } 
+  
   // generate the barycentric masks
 
   cout << "Writing interpolation info to file " << filenameInterp << " ." << endl;
@@ -1007,7 +1001,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
   // and compute the barycentric coordinates
 
   ObjMesh inputMesh(inputObjMesh);
-
+  
   // will contain all voxels that contain at least one vertex of the external mesh
   set<voxel> visitedVoxels;
 
@@ -1019,7 +1013,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
 
     Vec3d pos = inputMesh.getPosition(i);
     unsigned int i1,j1,k1;
-
+    
     Vec3d relPos = pos-bmin;
 
     // find voxel containing 'pos'
@@ -1032,9 +1026,9 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
 
     // compute barycentric coordinates
     Vec3d w = pos - (bmin + Vec3d(i1 * inc[0], j1 * inc[1], k1 * inc[2]));
-    double alpha = w[0] / inc[0];
-    double beta = w[1] / inc[1];
-    double gamma = w[2] / inc[2];
+    double alpha = w[0] / inc[0];     
+    double beta = w[1] / inc[1];     
+    double gamma = w[2] / inc[2];     
 
     map<gridPoint,int> :: iterator voxelVertexEntry;
 
@@ -1042,7 +1036,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 000" << endl;
-      return;
+      return; 
     }
     unsigned int c000 = voxelVertexEntry->second;
 
@@ -1050,7 +1044,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 100" << endl;
-      return;
+      return; 
     }
     unsigned int c100 = voxelVertexEntry->second;
 
@@ -1058,7 +1052,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 110" << endl;
-      return;
+      return; 
     }
     unsigned int c110 = voxelVertexEntry->second;
 
@@ -1066,7 +1060,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 010" << endl;
-      return;
+      return; 
     }
     unsigned int c010 = voxelVertexEntry->second;
 
@@ -1074,7 +1068,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 001" << endl;
-      return;
+      return; 
     }
     unsigned int c001 = voxelVertexEntry->second;
 
@@ -1082,7 +1076,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 101" << endl;
-      return;
+      return; 
     }
     unsigned int c101 = voxelVertexEntry->second;
 
@@ -1090,7 +1084,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 111" << endl;
-      return;
+      return; 
     }
     unsigned int c111 = voxelVertexEntry->second;
 
@@ -1098,7 +1092,7 @@ void ObjMeshOffsetVoxels::generateInterpolationMasks(const string & filenameInte
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 011" << endl;
-      return;
+      return; 
     }
     unsigned int c011 = voxelVertexEntry->second;
 
@@ -1205,7 +1199,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
   set<gridPoint> vertices;
 
   // insert all voxel vertices
-  set<voxel>::iterator aVoxel;
+  set<voxel>::iterator aVoxel; 
   for (aVoxel = voxels.begin(); aVoxel != voxels.end(); ++aVoxel) // over all voxels
   {
     unsigned int i1,j1,k1;
@@ -1222,8 +1216,8 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     vertices.insert(gridPoint(i1+1,j1,k1+1));
     vertices.insert(gridPoint(i1+1,j1+1,k1+1));
     vertices.insert(gridPoint(i1,j1+1,k1+1));
-  }
-
+  } 
+  
   // now, vertices contains all voxel vertices with no duplications
 
   // add all voxel vertices into a map, together with their corresponding index (i.e. serial number of a voxel vertex in the set order)
@@ -1236,8 +1230,8 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     //Vec3d pos = bmin + Vec3d(v->first*inc[0], v->second*inc[1], v->third*inc[2]);
     //cout << "Position " << position << ": " << pos << endl;
     position++;
-  }
-
+  } 
+  
   // === load the voxel modal matrix
   cout << "Loading the voxel modal matrix " << filenameVoxelModalMatrix << " ." << endl;
 
@@ -1294,7 +1288,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
 
     Vec3d pos = inputMesh.getPosition(i);
     unsigned int i1,j1,k1;
-
+    
     Vec3d relPos = pos-bmin;
 
     // find voxel containing 'pos'
@@ -1304,9 +1298,9 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
 
     // compute barycentric coordinates
     Vec3d w = pos - (bmin + Vec3d(i1 * inc[0], j1 * inc[1], k1 * inc[2]));
-    double alpha = w[0] / inc[0];
-    double beta = w[1] / inc[1];
-    double gamma = w[2] / inc[2];
+    double alpha = w[0] / inc[0];     
+    double beta = w[1] / inc[1];     
+    double gamma = w[2] / inc[2];     
 
     // locate voxel vertices
     map<gridPoint,int> :: iterator voxelVertexEntry;
@@ -1315,7 +1309,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 000" << endl;
-      return;
+      return; 
     }
     unsigned int c000 = voxelVertexEntry->second;
 
@@ -1323,7 +1317,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 100" << endl;
-      return;
+      return; 
     }
     unsigned int c100 = voxelVertexEntry->second;
 
@@ -1331,7 +1325,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 110" << endl;
-      return;
+      return; 
     }
     unsigned int c110 = voxelVertexEntry->second;
 
@@ -1339,7 +1333,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 010" << endl;
-      return;
+      return; 
     }
     unsigned int c010 = voxelVertexEntry->second;
 
@@ -1347,7 +1341,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 001" << endl;
-      return;
+      return; 
     }
     unsigned int c001 = voxelVertexEntry->second;
 
@@ -1355,7 +1349,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 101" << endl;
-      return;
+      return; 
     }
     unsigned int c101 = voxelVertexEntry->second;
 
@@ -1363,7 +1357,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 111" << endl;
-      return;
+      return; 
     }
     unsigned int c111 = voxelVertexEntry->second;
 
@@ -1371,7 +1365,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
     if (voxelVertexEntry == vertices2.end())
     {
       cout << "Error: vertex " << i+1 << " at location " << pos << " doesn't have corner neighbor 011" << endl;
-      return;
+      return; 
     }
     unsigned int c011 = voxelVertexEntry->second;
 
@@ -1429,7 +1423,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
       coef += dot(gradf101,normal) * u101;
       coef += dot(gradf111,normal) * u111;
       coef += dot(gradf011,normal) * u011;
-
+      
       outputMatrix[ELT(3*n, 3*i+0, j)] = coef[0];
       outputMatrix[ELT(3*n, 3*i+1, j)] = coef[1];
       outputMatrix[ELT(3*n, 3*i+2, j)] = coef[2];
@@ -1440,7 +1434,7 @@ void ObjMeshOffsetVoxels::generateNormalCorrectionMatrix(const string filenameCo
   cout << endl;
 
   WriteMatrixToDisk_((char*)filenameCorrectionMatrix.c_str(), 3*n, r, outputMatrix);
-
+ 
   free(outputMatrix);
   free(voxelModalMatrix);
 }

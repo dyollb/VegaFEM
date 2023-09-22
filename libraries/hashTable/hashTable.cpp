@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "hashTable" library , Copyright (C) 2007 CMU                          *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -163,7 +159,41 @@ void HashTable<Data>::printInfo()
 }
 
 // set<unsigned int>
-template class HashTable<set<unsigned int>>;
-template class HashTable<set<int>>;
-template class HashTable<unsigned int>;
-template class HashTable<int>;
+template HashTable<set<unsigned int> >::HashTable(unsigned int suggestedSize);
+template bool HashTable<set<unsigned int> >::isPrime(unsigned int n);
+template void HashTable<set<unsigned int> >::clear();
+template void HashTable<set<unsigned int> >::insert(unsigned int key, set<unsigned int>  & data);
+template bool HashTable<set<unsigned int> >::contains(unsigned int key, set<unsigned int> & data);
+template void HashTable<set<unsigned int> >::erase(unsigned int key);
+template set<unsigned int> * HashTable<set<unsigned int> >::find(unsigned int key);
+template void HashTable<set<unsigned int> >::printInfo();
+
+// set<int>
+template HashTable<set<int> >::HashTable(unsigned int suggestedSize);
+template bool HashTable<set<int> >::isPrime(unsigned int n);
+template void HashTable<set<int> >::clear();
+template void HashTable<set<int> >::insert(unsigned int key, set<int>  & data);
+template bool HashTable<set<int> >::contains(unsigned int key, set<int> & data);
+template void HashTable<set<int> >::erase(unsigned int key);
+template set<int> * HashTable<set<int> >::find(unsigned int key);
+template void HashTable<set<int> >::printInfo();
+
+// unsigned int
+template HashTable<unsigned int>::HashTable(unsigned int suggestedSize);
+template bool HashTable<unsigned int>::isPrime(unsigned int n);
+template void HashTable<unsigned int>::clear();
+template void HashTable<unsigned int>::insert(unsigned int key, unsigned int & data);
+template bool HashTable<unsigned int>::contains(unsigned int key, unsigned int & data);
+template void HashTable<unsigned int>::erase(unsigned int key);
+template unsigned int * HashTable<unsigned int>::find(unsigned int key);
+template void HashTable<unsigned int>::printInfo();
+
+// int
+template HashTable<int>::HashTable(unsigned int suggestedSize);
+template bool HashTable<int>::isPrime(unsigned int n);
+template void HashTable<int>::clear();
+template void HashTable<int>::insert(unsigned int key, int & data);
+template bool HashTable<int>::contains(unsigned int key, int & data);
+template void HashTable<int>::erase(unsigned int key);
+template int * HashTable<int>::find(unsigned int key);
+template void HashTable<int>::printInfo();

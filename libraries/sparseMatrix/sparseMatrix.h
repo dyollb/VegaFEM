@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "sparseMatrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC   *
+ * "sparseMatrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC   *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -112,12 +108,12 @@ class SparseMatrixOutline
 public:
   // makes an empty sparse matrix with numRows rows
   SparseMatrixOutline(int numRows);
-  virtual ~SparseMatrixOutline();
+  ~SparseMatrixOutline();
 
   // makes a diagonal numRows x numRows sparse matrix; with a constant diagonal
   SparseMatrixOutline(int numRows, double diagonal);
   // makes a diagonal numRows x numRows sparse matrix; diagonal is a vector of n numbers
-  SparseMatrixOutline(int numRows, const double * diagonal);
+  SparseMatrixOutline(int numRows, double * diagonal);
 
   // loads the sparse matrix from a text file
   // if expand is greater than 1, the routine also expands each element into a diagonal block of size expand x expand... 
@@ -127,18 +123,11 @@ public:
   // save matrix to a text file
   int Save(const char * filename, int oneIndexed=0) const;
 
-  // initialize the matrix to be an empty matrix with numRows rows
-  void Initialize(int numRows);
   // add entry at location (i,j) in the matrix
   void AddEntry(int i, int j, double value=0.0);
-  // remove entry at location (i,j)
-  void RemoveEntry(int i, int j);
-  // add a 3x3 matrix at location (3*i, 3*j)
-  void AddBlock3x3Entry(int i, int j, const double * matrix3x3); // matrix3x3 should be given in row-major order
-  void AddBlock3x3Entry(int i, int j, double value=0.0); // matrix is assigned the value at all 3x3 elements
-  // add a block (sparse) matrix (optionally multiplied with "scalarFactor"), starting at row i, and column j, can expand each element of block into a diagonal block of size "expand"
-  void AddBlockMatrix(int i, int j, const SparseMatrix * block, double scalarFactor=1.0, int expand=1);
-  void AddBlockMatrix(int i, int j, const SparseMatrixOutline & block, double scalarFactor=1.0);
+  void AddBlock3x3Entry(int i, int j, double * matrix3x3); // matrix3x3 should be given in row-major order
+  // add a block (sparse) matrix (optionally multiplied with "scalarFactor"), starting at row i, and column j
+  void AddBlockMatrix(int i, int j, const SparseMatrix * block, double scalarFactor=1.0);
   void IncreaseNumRows(int numAddedRows); // increases the number of matrix rows (new rows are added at the bottom of the matrix, and are all empty)
 
   void MultiplyRow(int row, double scalar); // multiplies all elements in row 'row' with scalar 'scalar'
@@ -152,7 +141,6 @@ public:
 
   // low-level routine which is rarely used
   inline const std::map<int,double> & GetRow(int i) const { return columnEntries[i]; }
-  inline std::map<int,double> & GetRow(int i) { return columnEntries[i]; }
   friend class SparseMatrix;
 
 protected:
@@ -167,23 +155,12 @@ public:
 
   SparseMatrix(const char * filename); // load from text file (same text file format as SparseMatrixOutline)
   SparseMatrix(SparseMatrixOutline * sparseMatrixOutline); // create it from the outline
-  // create it by specifying all entries: number of rows, length of each row, indices of columns of non-zero entries in each row, values of non-zero entries in each row
-  // column indices in each row must be sorted (ascending)
-  // if shallowCopy=1, the class will not allocate its own internal buffers, but will assume ownership of the input rowLength, columnIndices and columnEntries parameters
-  SparseMatrix(int numRows, int * rowLength, int ** columnIndices, double ** columnEntries, int shallowCopy=0); 
-  SparseMatrix(int numSubMatrices, const SparseMatrix ** subMatrices, const int * numColumns); // construct a diagonal block matrix from submatrices
-
   SparseMatrix(const SparseMatrix & source); // copy constructor
-  virtual ~SparseMatrix();
+  ~SparseMatrix();
 
   int Save(const char * filename, int oneIndexed=0) const; // save matrix to a disk text file 
 
-  // save matrix to a text file that can be imported into Matlab; Related Matlab commands: 
-  // load matname.dat;       # read the stored sparse matrix from disk
-  // M = spconvert(matname); # convert the loaded matrix to standard Matlab sparse format
-  // spy(M);                 # check matrix sparsity
-  // Mf = full(M);           # convert the sparse matrix to a full matrix
-  int SaveToMatlabFormat(const char * filename) const; 
+  int SaveToMatlabFormat(const char * filename) const; // save matrix to a text file that can be imported into Matlab
 
   // set/add value to the j-th sparse entry in the given row (NOT to matrix element at (row,j))
   inline void SetEntry(int row, int j, double value) { columnEntries[row][j] = value; }
@@ -211,13 +188,9 @@ public:
   double SumEntries() const; // returns the sum of all matrix entries
   void SumRowEntries(double * rowSums) const; // returns the sum of all entries in each row
   double GetMaxAbsEntry() const; // max abs value of a matrix entry
-  double GetInfinityNorm() const; // matrix infinity norm: maximum absolute row sum of the matrix
-  double GetFrobeniusNorm() const; // matrix Frobenius norm: sqrt of the sum of absolute squares of its elements
+  double GetInfinityNorm() const; // matrix infinity norm
   void Print(int sparsePrint=0) const; // prints the matrix out to standard output
   double GetRowNorm2(int row) const;
-  bool HasInf() const; // has positive infinity or negative infinity
-  bool HasNaN() const; // has not-a-number
-  bool HasInfOrNaN() const; // has positive infinity, negative infinity or not-a-number
 
   // matrix algebra (all involved matrices must have the same pattern of non-zero entries)
   SparseMatrix operator+(const SparseMatrix & mat2) const;
@@ -227,11 +200,7 @@ public:
   SparseMatrix & operator*=(const double alpha);
   SparseMatrix & operator+=(const SparseMatrix & mat2);
   SparseMatrix & operator-=(const SparseMatrix & mat2);
-  bool operator==(const SparseMatrix & mat2) const;
-  bool operator!=(const SparseMatrix & mat2) const;
-  // check whether two sparse matrices share the same size and locations of non-zero entries
-  bool SameStructure(const SparseMatrix & mat2) const;
-  
+  bool operator==(const SparseMatrix & mat2);
   void ScalarMultiply(const double alpha, SparseMatrix * dest=NULL); // dest = alpha * dest (if dest=NULL, operation is applied to this object)
   void ScalarMultiplyAdd(const double alpha, SparseMatrix * dest=NULL); // dest += alpha * dest (if dest=NULL, operation is applied to this object)
   void MultiplyRow(int row, double scalar); // multiplies all elements in row 'row' with scalar 'scalar'
@@ -250,8 +219,8 @@ public:
   double QuadraticForm(const double * vector) const;
   // normalizes vector in the M-norm: vector := vector / sqrt(<M * vector, vector>)  (assumes symmetric M)
   void NormalizeVector(double * vector) const;
-  void ConjugateMatrix(const double * U, int r, double * MTilde) const; // computes MTilde = U^T M U (M can be a general square matrix, U need not be a square matrix; number of columns of U is r; sizes of M and U must be such that product is defined; output matrix will have size r x r, stored column-major)
-  SparseMatrix ConjugateMatrix(const SparseMatrix & U, int verbose=0, int numColumns=-1) const; // computes U^T M U (M is this matrix, and can be a general square matrix, U need not be a square matrix; sizes of M and U must be such that product is defined); numColumns is the number of columns of the result (U^T M U); this is important because there could be empty columns in U at the right border of the U matrix; if numColumns=-1, the routine will use U->GetNumColumns()
+  void ConjugateMatrix(double * U, int r, double * MTilde); // computes MTilde = U^T M U (M can be a general square matrix, U need not be a square matrix; number of columns of U is r; sizes of M and U must be such that product is defined; output matrix will have size r x r, stored column-major)
+  SparseMatrix ConjugateMatrix(SparseMatrix & U, int verbose=0); // computes U^T M U (M is this matrix, and can be a general square matrix, U need not be a square matrix; sizes of M and U must be such that product is defined)
 
   // builds indices for subsequent faster product computation (below)
   // input: U, MTilde; MTilde must equal U^T M U, computed using the "ConjugateMatrix" routine above
@@ -275,33 +244,31 @@ public:
   void MakeLinearColumnIndexArray(int * indices) const;
   void MakeLinearColumnIndexArray(double * indices) const;
 
-  // Make a dense matrix (column-major storage).
+  // make a dense matrix (column-major LAPACK style storage)
   // (this can be a huge matrix for large sparse matrices)
-  // Storage in denseMatrix must be pre-allocated.
-  // The size of the denseMatrix is: this->GetNumRows() x (numColumns == -1 ? this->GetNumColumns() : numColumns).
-  void MakeDenseMatrix(double * denseMatrix, int numColumns=-1) const;
+  // storage in denseMatrix must be pre-allocated
+  void MakeDenseMatrix(double * denseMatrix) const;
   // also transposes the matrix:
   void MakeDenseMatrixTranspose(int numColumns, double * denseMatrix) const;
 
   // removes row(s) and column(s) from the matrix
   void RemoveRowColumn(int rowColumn); // 0-indexed
-  void RemoveRowsColumns(int numRemovedRowColumns, const int * removedRowColumns, int oneIndexed=0); // the rowColumns must be sorted (ascending)
-  void RemoveRowsColumnsSlow(int numRemovedRowColumns, const int * removedRowColumns, int oneIndexed=0); // the rowColumns need not be sorted
+  void RemoveRowsColumns(int numRemovedRowColumns, int * removedRowColumns, int oneIndexed=0); // the rowColumns must be sorted (ascending)
+  void RemoveRowsColumnsSlow(int numRemovedRowColumns, int * removedRowColumns, int oneIndexed=0); // the rowColumns need not be sorted
 
   // removes row(s) from the matrix
   void RemoveRow(int row); // 0-indexed
-  void RemoveRows(int numRemovedRows, const int * removedRows, int oneIndexed=0); // rows must be sorted (ascending)
-  void RemoveRowsSlow(int numRemovedRows, const int * removedRows, int oneIndexed=0); // the rows need not be sorted
+  void RemoveRows(int numRemovedRows, int * removedRows, int oneIndexed=0); // rows must be sorted (ascending)
+  void RemoveRowsSlow(int numRemovedRows, int * removedRows, int oneIndexed=0); // the rows need not be sorted
 
   // removes column(s) from the matrix
   void RemoveColumn(int column); // 0-indexed
-  void RemoveColumns(int numRemovedColumns, const int * removedColumns, int oneIndexed=0); // columns must be sorted (ascending)
-  void RemoveColumnsSlow(int numRemovedColumns, const int * removedColumns, int oneIndexed=0); // columns need not be sorted 
+  void RemoveColumns(int numRemovedColumns, int * removedColumns, int oneIndexed=0); // columns must be sorted (ascending)
+  void RemoveColumnsSlow(int numRemovedColumns, int * removedColumns, int oneIndexed=0); // columns need not be sorted 
 
   void IncreaseNumRows(int numAddedRows); // increases the number of matrix rows (new rows are added at the bottom of the matrix, and are all empty)
   void SetRows(const SparseMatrix * source, int startRow, int startColumn=0); // starting with startRow, overwrites the rows with those of matrix "source"; data is written into columns starting at startColumn
   void AppendRowsColumns(const SparseMatrix * source); // appends the matrix "source" at the bottom of matrix, and trans(source) to the right of the matrix
-  void AppendRows(const SparseMatrix * source);
 
   // transposition (note: the matrix need not be symmetric)
   void BuildTranspositionIndices();
@@ -333,7 +300,7 @@ public:
   // this routine will accelerate subsequent GetDiagonal or AddDiagonalMatrix calls, but is not necessary for GetDiagonal or AddDiagonalMatrix
   void BuildDiagonalIndices();
   void FreeDiagonalIndices();
-  void GetDiagonal(double * diagonal) const;
+  void GetDiagonal(double * diagonal);
   void AddDiagonalMatrix(double * diagonalMatrix);
   void AddDiagonalMatrix(double constDiagonalElement);
 
@@ -347,8 +314,6 @@ public:
   // assign a submatrix to the current matrix, whose elements are a subset of the elements of the current matrix
   // note: the other entries of the current matrix are unmodified
   void AssignSubMatrix(const SparseMatrix & submatrix, int subMatrixID=0);
-  // assign the current matrix to a submatrix
-  void AssignToSubMatrix(SparseMatrix & submatrix, int subMatrixID=0) const;
   // add a matrix to the current matrix, whose elements are a subset of the elements of the current matrix
   // += factor * mat2
   // returns *this
@@ -358,12 +323,11 @@ public:
   // It allows you to assign a super matrix to the current matrix.
   // oneIndexed: tells whether the fixed rows and columns are specified 1-indexed or 0-indexed
   // First, call BuildSuperMatrixIndices once to inialize (all fixed rows and columns are indexed with respect the superMatrix):
-  void BuildSuperMatrixIndices(int numFixedRowColumns, const int * fixedRowColumns, const SparseMatrix * superMatrix, int oneIndexed=0); // use this version if the indices of removed rows and columns are the same
-  void BuildSuperMatrixIndices(int numFixedRows, const int * fixedRows, int numFixedColumns, const int * fixedColumns, const SparseMatrix * superMatrix, int oneIndexed=0); // allows arbitrary row and column indices
+  void BuildSuperMatrixIndices(int numFixedRowColumns, int * fixedRowColumns, const SparseMatrix * superMatrix, int oneIndexed=0); // use this version if the indices of removed rows and columns are the same
+  void BuildSuperMatrixIndices(int numFixedRows, int * fixedRows, int numFixedColumns, int * fixedColumns, const SparseMatrix * superMatrix, int oneIndexed=0); // allows arbitrary row and column indices
   // Then, call this (potentially many times) to quickly assign the values at the appropriate places in the submatrix.
   // For example, you can use this to copy data from a matrix into a submatrix obtained by a previous call to RemoveRowColumns.
   void AssignSuperMatrix(const SparseMatrix & superMatrix);
-  void FreeSuperMatrixIndices();
 
   // returns the total number of non-zero entries in the lower triangle (including diagonal)
   int GetNumLowerTriangleEntries() const;
@@ -426,7 +390,7 @@ protected:
 
   void InitFromOutline(SparseMatrixOutline * sparseMatrixOutline);
   void Allocate();
-  void FreeAuxiliaryData();
+  void BuildRenumberingVector(int nConstrained, int nSuper, int numFixedDOFs, int * fixedDOFs, int ** superDOFs, int oneIndexed=0);
 };
 
 #endif

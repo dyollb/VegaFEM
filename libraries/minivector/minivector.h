@@ -27,6 +27,8 @@
 * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+  Version 1.2
 */
 
 #ifndef _MINIVECTOR_H_
@@ -34,10 +36,7 @@
 
 #include "vec2d.h"
 #include "vec3d.h"
-#include "vec4d.h"
 #include "mat3d.h"
-#include "vec3i.h"
-#include "vec4i.h"
 
 #endif
 

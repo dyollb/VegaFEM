@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "sceneObject" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC    *
+ * "sceneObject" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC    *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Daniel Schroeder                         *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -49,19 +45,17 @@ public:
   virtual ~SceneObjectDeformable();
 
   // sets the current dynamic vertex positions to the rest position + specified deformation
-  void SetVertexDeformations(const double * u);
-  void SetVertexDeformations(const float * u);
+  void SetVertexDeformations(double * u);
+  void SetVertexDeformations(float * u);
 
   // adds deformations to current dynamicPosition of the vertices
-  void AddVertexDeformations(const double * u);
+  void AddVertexDeformations(double * u);
 
   void ResetDeformationToRest();
 
   inline void GetSingleVertexRestPosition(int vertex, double * x, double * y, double * z);
   inline void SetSingleVertexRestPosition(int vertex, double x, double y, double z);
   inline void GetSingleVertexPositionFromBuffer(int vertex, double * x, double * y, double * z);
-  inline const Vec3d & GetSingleVertexPositionFromBuffer(int vertex) const;
-  inline Vec3d GetSingleVertexRestPosition(int vertex) const;
 
   virtual void SetLighting(Lighting * lighting);
 
@@ -89,16 +83,6 @@ inline void SceneObjectDeformable::GetSingleVertexPositionFromBuffer(int vertex,
   *x = pos[0];
   *y = pos[1];
   *z = pos[2];
-}
-
-inline const Vec3d& SceneObjectDeformable::GetSingleVertexPositionFromBuffer(int vertex) const
-{
-  return mesh->getPosition(vertex);
-}
-
-inline Vec3d SceneObjectDeformable::GetSingleVertexRestPosition(int vertex) const
-{
-  return Vec3d(&restPosition[3*vertex]);
 }
 
 #endif

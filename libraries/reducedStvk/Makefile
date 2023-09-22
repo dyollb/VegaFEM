@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=REDUCEDSTVK
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-REDUCEDSTVKOBJECTS=StVKReducedInternalForces.o StVKReducedStiffnessMatrix.o StVKReducedHessianTensor.o StVKReducedInternalForcesMultiLoad.o
+REDUCEDSTVKOBJECTS=StVKReducedInternalForces.o StVKReducedInternalForcesMT.o StVKReducedStiffnessMatrix.o StVKReducedHessianTensor.o StVKReducedInternalForcesMultiLoad.o
 
 # the libraries this library depends on
-REDUCEDSTVKLIBS=stvk matrix
+REDUCEDSTVKLIBS=stvk modalMatrix matrix
 
 # the headers in this library
-REDUCEDSTVKHEADERS=StVKReducedInternalForces.h StVKReducedStiffnessMatrix.h StVKReducedHessianTensor.h StVKReducedInternalForcesMultiLoad.h
+REDUCEDSTVKHEADERS=StVKReducedInternalForces.h StVKReducedInternalForcesMT.h StVKReducedStiffnessMatrix.h StVKReducedHessianTensor.h StVKReducedInternalForcesMultiLoad.h
 
 REDUCEDSTVKOBJECTS_FILENAMES=$(addprefix $(L)/reducedStvk/, $(REDUCEDSTVKOBJECTS))
 REDUCEDSTVKHEADER_FILENAMES=$(addprefix $(L)/reducedStvk/, $(REDUCEDSTVKHEADERS))

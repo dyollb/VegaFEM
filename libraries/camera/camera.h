@@ -31,12 +31,8 @@
 
   A "spherical" OpenGL camera class, with the ability to set the OpenGL modelview transformation matrix.
 
-  A "spherical" camera is a camera that is located at location (R, Phi, Theta), in spherical coordinates, away from some focus position. 
-  R: radius of the sphere (-inf, +inf)
-  Phi: longitudinal angle value [0, 2PI), Phi goes counter-clockwise if viewed in opposite y direction
-  Theta: latitudinal angle value (-PI/2.0, PI/2.0), 0 at equator, PI/2.0 at north pole, -P/2.0 at south pole
-  It is pointed towards the focus position. It is useful for orbiting a fixed location (focus position) in interactive applications.
-  
+  A "spherical" camera is a camera that is located at location (R, Phi, Theta), in spherical coordinates, away from some focus position. It is pointed towards the focus position. It is useful for orbiting a fixed location (focus position) in interactive applications.
+
   cameraPosition = focusPosition + 
    [ R * cos(Phi) * cos (Theta), R * sin(Theta), -R * sin(Phi) * cos (Theta) ]
 
@@ -51,36 +47,29 @@ public:
 
   // R is the camera distance from the focus position 
   // Phi, Theta are camera longitude and lattitude (in radians)
-  // cameraPosition = focusPosition + [ R * cos(Phi) * cos (Theta), R * sin(Theta), -R * sin(Phi) * cos (Theta) ]
   // focusPosition is the 3D camera focus position (e.g., [0, 0, 0])
   // up is the 3D up vector (e.g., [0, 1, 0])
   // movementSensitivity controls how much camera moves during the camera move commands
   // camera2WorldScalingFactor controls the scaling between the "camera" coordinate systems and "world" coordinate systems (only needed with the camera<-->world conversion routines)
-  SphericalCamera(double R, double Phi, double Theta, double focusPosition[3], double up[3], 
-    double movementSensitivity=1.0, double camera2WorldScalingFactor=1.0);
+  SphericalCamera(double R, double Phi, double Theta, double * focusPosition, double * up, double movementSensitivity=1.0, double camera2WorldScalingFactor=1.0);
 
   // commands to move the camera
-  void MoveRight(double amount); // adds Phi by amount * movementSensitivity
-  void MoveUp(double amount);    // adds Theta by amount * movementSensitivity
-  void ZoomIn(double amount);    // negative value of parameter means zoom out; reduces R by amount * movementSensitivity;
-  void MoveIn(double amount);    // adds focusPosition by amount * zAxis
-  void MoveFocusRight(double amount); // move the camera focus, relative to the current focus
-  void MoveFocusUp(double amount);
+  void MoveRight(double);
+  void MoveUp(double);
+  void ZoomIn(double); // negative value of parameter means zoom out
+  void MoveIn(double);
+  void MoveFocusRight(double); // move the camera focus, relative to the current focus
+  void MoveFocusUp(double);
 
-  // calls gluLookAt to set the OpenGL modelview matrix, corresponding to the current camera position, focus, and up vector
-  // if R > 0, the camera looks at the focus position
-  // if R < 0, the camera is behind the focus position, it looks beyond the focus position
-  void Look(); 
+  void Look(); // calls gluLookAt to set the OpenGL modelview matrix, corresponding to the current camera position, focus, and up vector
 
-  double GetRadius() const { return R; }
-  double GetPhi() const { return Phi; }
-  double GetTheta() const { return Theta; }
-  void GetFocusPosition(double focusPosition_[3]) const;
-  void GetCameraPosition(double cameraPosition_[3]) const;
+  double GetRadius() { return R; }
+  double GetPhi() { return Phi; }
+  double GetTheta() { return Theta; }
 
-  void SetRadius(double r);
-  void SetFocusPosition(const double focusPosition_[3]);
   void SetPosition(double r, double phi, double theta);
+  void SetFocusPosition(double focusPosition_[3]);
+  void GetFocusPosition(double focusPosition_[3]);
 
   // get the camera position in the world coordinate system
   void GetAbsWorldPosition(double & x, double & y, double & z);
@@ -106,32 +95,25 @@ public:
 
   // === routines below this point are advanced ===
 
-  double GetCamera2WorldScalingFactor() const { return camera2WorldScalingFactor; }
+  double GetCamera2WorldScalingFactor() { return camera2WorldScalingFactor; }
   void SetCamera2WorldScalingFactor(double factor) { camera2WorldScalingFactor = factor; }
 
+  // sets the world-coordinate position corresponding to zero position in the "camera" coordinate system
+  inline void SetOrigin(double * origin_) { origin[0] = origin_[0]; origin[1] = origin_[1]; origin[2] = origin_[2]; }
+
   // transform a location specified in the camera coordinate system into the world coordinate system
-  void CameraVector2WorldVector2D(const double c[3], double w[3]) const;
-  void CameraVector2WorldVector2D(double cx, double cy, double cz, double w[3]) const;
-  void WorldVector2CameraVector2D(const float w[3], float c[3]) const;
-  void WorldVector2CameraVector2D(const double w[3], double c[3]) const;
+  void CameraVector2WorldVector2D(double * c, double * w);
+  void CameraVector2WorldVector2D(double cx, double cy, double cz, double * w);
 
   // same as above, except that it doesn't take into account the position of the camera
   // useful for transforming velocities
-  void CameraVector2WorldVector_OrientationOnly2D(const double c[3], double w[3]) const;
-  void CameraVector2WorldVector_OrientationOnly2D(const float c[3], float w[3]) const;
-  void CameraVector2WorldVector_NoScaling_OrientationOnly2D(const double c[3], double w[3]) const;
-  void CameraVector2WorldVector_NoScaling_OrientationOnly2D(const float c[3], float w[3]) const;
-  void CameraVector2WorldVector_OrientationOnly2D(double cx, double cy, double cz, double w[3]) const;
-  // uses a coordinate system where z-axis is the normal of the camera sphere
-  void CameraVector2WorldVector_OrientationOnly3D(double cx, double cy, double cz, double w[3]) const;
+  void CameraVector2WorldVector_OrientationOnly2D(double * c, double * w);
+  void CameraVector2WorldVector_OrientationOnly2D(double cx, double cy, double cz, double * w);
+  void CameraVector2WorldVector_OrientationOnly3D(double cx, double cy, double cz, double * w); // uses a coordinate system where z-axis is normal to the camera sphere
 
   // converts a rotation in camera system to the corresponding rotation in the world coordinate system
-  // input is a 3x3 row-major matrix
-  void CameraRotation2WorldRotation2D(const float c[9], float w[9]) const;
-  void CameraRotation2WorldRotation2D(const double c[9], double w[9]) const;
-
-  void WorldRotation2CameraRotation2D(const float c[9], float w[9]) const;
-  void WorldRotation2CameraRotation2D(const double c[9], double w[9]) const;
+  void CameraRotation2WorldRotation2D(float * c, float * w);
+  void CameraRotation2WorldRotation2D(double * c, double * w);
 
   // converts 4x4 row-major camera-space transform matrix to 4x4 row-major world-space transform matrix
   void CameraTransform2WorldTransform2D(double * c, double * w); 
@@ -144,16 +126,15 @@ public:
   // useful for transforming forces and torques from world coordinate system back to the user(=camera) coordinate system
   void WorldVector2CameraVector_OrientationOnly2D(double * w, double * c);
   void WorldVector2CameraVector_OrientationOnly2D(float * w, float * c);
-  void WorldVector2CameraVector_Scaling_OrientationOnly2D(double * w, double * c);
-  void WorldVector2CameraVector_Scaling_OrientationOnly2D(float * w, float * c);
   void WorldVector2CameraVector_OrientationOnly2D(double w0, double w1, double w2, double * c);
 
-  void Get2DAxes(double xAxis2D[2], double yAxis2D[2]) const;
-  void Get3DAxes(double xAxis3D[3], double yAxis3D[3], double zAxis3D[3]) const;
+  void Get2DAxes(double xAxis2D[2], double yAxis2D[2]);
+  void Get3DAxes(double xAxis3D[3], double yAxis3D[3], double zAxis3D[3]);
+
+  void ComputeCameraPosition(); // the user normally never needs to call this routine
+  void ComputeLocalCoordinateSystem(); // the user normally never needs to call this routine
 
 protected:
-  void ComputeCameraPosition();
-  void ComputeLocalCoordinateSystem();
 
   // the default values
   double R0, Phi0, Theta0;
@@ -170,21 +151,15 @@ protected:
 
   double buf[9];
 
-  // the camera coordinate system axes
-  // when viewed in camera space, xAxis points to right, yAxis is up, zAxis goes out of the screen
-  // xAxis, yAxis and zAxis are directions of the derivatives of the equation for computing the camera position
-  double xAxis[3], yAxis[3], zAxis[3];
-  
-  // the simplified view axes (for 2D viewing transformation only)
-  // these are actually 2d vectors, third components is only used for easy normalizing via NORMALIZE macro
-  // the simplified view assumes the camera is alwarys on the equator, i.e. theta is zero
-  // in this case, the y direction always points to world negative y, 
-  // xAxis2D stores xAxis projected to xz plane, and yAxis2D stores zAxis projected to xz plane
-  double xAxis2D[3], yAxis2D[3]; 
- 
+  double xAxis[3], yAxis[3], zAxis[3]; // the camera coordinate system axes; xAxis is parallel to xz-plane, zAxis points towards focus position
+
+  double xAxis2D[3], yAxis2D[3]; // the simplified view axes (for 2D viewing transformation only)
+     // these are actually 2d vectors, third components is only used for easy normalizing via NORMALIZE macro
 
   double movementSensitivity;
   double camera2WorldScalingFactor; // dx(world) = dx(camera) * camera2WorldScalingFactor
+
+  double origin[3]; // only used to transform from camera to world coordinate system
 
   struct {
     double R,Phi,Theta;

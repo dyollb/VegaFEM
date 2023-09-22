@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "clothBW" library , Copyright (C) 2018 USC                            *
+ * "clothBW" library , Copyright (C) 2015 USC                            *
  * All rights reserved.                                                  *
  *                                                                       *
- * Code authors: Andy Pierce, Yijing Li, Yu Yu Xu, Jernej Barbic         *
- * http://www.jernejbarbic.com/vega                                      *
+ * Code authors: Andy Pierce, Yu Yu Xu, Jernej Barbic, Yijing Li         *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -32,56 +28,180 @@
 
 #include "macros.h"
 #include "clothBWFromObjMesh.h"
-
 using namespace std;
 
-ClothBW * ClothBWFromObjMesh::GenerateClothBW(const ObjMesh * mesh, double surfaceDensity, const ClothBW::MaterialGroup & material, int addGravity)
+int ClothBWFromObjMesh::GenerateClothBW(ObjMesh * mesh, ClothBW ** clothBW, double surfaceDensity, double tensileStiffness, double shearStiffness, double bendStiffnessU, double bendStiffnessV, double damping, int bu, int bv, int addGravity)
 {
-  int numMaterialGroups = mesh->getNumGroups();
+  int numMaterialGroups = mesh->getNumMaterials();
   
   // create arrays of density & stiffness values
-  vector<ClothBW::MaterialGroup> materialGroups(numMaterialGroups);
-  vector<double> densities(numMaterialGroups);
+  double * surfaceDensityArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * tensileStiffnessArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * shearStiffnessArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * bendStiffnessUArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * bendStiffnessVArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * dampingArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  int * buArray = (int*) malloc (sizeof(int) * numMaterialGroups);
+  int * bvArray = (int*) malloc (sizeof(int) * numMaterialGroups);
   
   // fill arrays all with the same value
-  for (int i=0; i<numMaterialGroups; i++) 
+  for (int i=0; i<numMaterialGroups; i++)
   {
-    materialGroups[i] = material;
-    densities[i] = surfaceDensity;
+    surfaceDensityArray[i] = surfaceDensity;
+    tensileStiffnessArray[i] = tensileStiffness;
+    shearStiffnessArray[i] = shearStiffness;
+    bendStiffnessUArray[i] = bendStiffnessU;
+    bendStiffnessVArray[i] = bendStiffnessV;
+    dampingArray[i] = damping;
+    buArray[i] = bu;
+    bvArray[i] = bv;
   }
   
   // construct clothBW
-  return GenerateClothBW(mesh, numMaterialGroups, densities.data(), materialGroups.data(), addGravity);
+  GenerateClothBW(mesh, clothBW, numMaterialGroups, surfaceDensityArray, tensileStiffnessArray, shearStiffnessArray, bendStiffnessUArray, bendStiffnessVArray, dampingArray, buArray, bvArray, addGravity);
+  
+  // free memory we allocated
+  free(surfaceDensityArray);
+  free(tensileStiffnessArray);
+  free(shearStiffnessArray);
+  free(bendStiffnessUArray);
+  free(bendStiffnessVArray);
+  free(dampingArray);
+  free(buArray);
+  free(bvArray);
+
+  return 0;
 }
 
-ClothBW * ClothBWFromObjMesh::GenerateClothBW(const ObjMesh * mesh, int numMaterialGroups, const double * groupSurfaceDensities,
-    const ClothBW::MaterialGroup * material, int addGravity)
+int ClothBWFromObjMesh::GenerateClothBWMT(ObjMesh * mesh, ClothBWMT ** clothBWMT, double surfaceDensity, double tensileStiffness, double shearStiffness, double bendStiffnessU, double bendStiffnessV, double damping, int numThreads, int bu, int bv, int addGravity)
 {
-  int numVertices = 0, numTriangles = 0, numGroups = 0;
-  double * restPositions = NULL;
-  int * triangles = NULL, * triangleGroups = NULL;
+  int numMaterialGroups = mesh->getNumMaterials();
+  
+  // create arrays of density & stiffness values
+  double * surfaceDensityArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * tensileStiffnessArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * shearStiffnessArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * bendStiffnessUArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * bendStiffnessVArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  double * dampingArray = (double*) malloc (sizeof(double) * numMaterialGroups);
+  int * buArray = (int*) malloc (sizeof(int) * numMaterialGroups);
+  int * bvArray = (int*) malloc (sizeof(int) * numMaterialGroups);
+  
+  // fill arrays all with the same value
+  for (int i=0; i<numMaterialGroups; i++)
+  {
+    surfaceDensityArray[i] = surfaceDensity;
+    tensileStiffnessArray[i] = tensileStiffness;
+    shearStiffnessArray[i] = shearStiffness;
+    bendStiffnessUArray[i] = bendStiffnessU;
+    bendStiffnessVArray[i] = bendStiffnessV;
+    dampingArray[i] = damping;
+    buArray[i] = bu;
+    bvArray[i] = bv;
+  }
+  
+  // construct clothBW
+  GenerateClothBWMT(mesh, clothBWMT, numMaterialGroups, surfaceDensityArray, tensileStiffnessArray, shearStiffnessArray, bendStiffnessUArray, bendStiffnessVArray, dampingArray, numThreads, buArray, bvArray, addGravity);
+  
+  // free memory we allocated
+  free(surfaceDensityArray);
+  free(tensileStiffnessArray);
+  free(shearStiffnessArray);
+  free(bendStiffnessUArray);
+  free(bendStiffnessVArray);
+  free(dampingArray);
+  free(buArray);
+  free(bvArray);
+
+  return 0;
+}
+
+
+int ClothBWFromObjMesh::GenerateClothBW(ObjMesh * mesh, ClothBW ** clothBW, int numMaterialGroups, double * surfaceDensity, double * tensileStiffness, double * shearStiffness, double * bendStiffnessU, double * bendStiffnessV, double * damping, int * bu, int * bv, int addGravity)
+{
+  //mesh->triangulate();
+  
+  int numParticles;
+  double * restPositions;
+  int numTriangles;
+  int * triangles;
+  int numGroups;
+  int * triangleGroups;
   
   //exportGeometry returns triangulated results
-  mesh->exportGeometry(&numVertices, &restPositions, &numTriangles, &triangles, &numGroups, &triangleGroups);
+  mesh->exportGeometry(&numParticles, &restPositions, &numTriangles, &triangles, &numGroups, &triangleGroups);
 
   if (numGroups != numMaterialGroups)
   {
     printf("Mismatch in the number of groups. Mesh has %d groups.\n", numGroups);
-    free(restPositions);
-    free(triangles);
-    free(triangleGroups);
-    return NULL;
+    return 1;
   }
   
-  vector<double> groupSurfaceMassDensity(numGroups), masses;
-  memcpy(groupSurfaceMassDensity.data(), groupSurfaceDensities, sizeof(double) * numGroups);
-  mesh->computeMassPerVertex(groupSurfaceMassDensity, masses);
+  // compute masses
+  vector<double> groupSurfaceMassDensity;
+  for(int i=0; i<numGroups; i++)
+    groupSurfaceMassDensity.push_back(surfaceDensity[i]);
 
-  ClothBW * clothBW = new ClothBW(numVertices,  restPositions, masses.data(), numTriangles, triangles, triangleGroups,
-      numGroups, material, addGravity);
+  vector<double> massesV;
+  mesh->computeMassPerVertex(groupSurfaceMassDensity, massesV);
+
+  double * masses = (double*) malloc (sizeof(double) * numParticles);
+  for(int i=0; i<numParticles; i++)
+    masses[i] = massesV[i];
+  
+  *clothBW = new ClothBW(numParticles,  masses, restPositions, numTriangles,
+                         triangles, triangleGroups, numGroups, tensileStiffness,
+                         shearStiffness, bendStiffnessU, bendStiffnessV,
+                         damping, addGravity);
   
   free(restPositions);
   free(triangles);
   free(triangleGroups);
-  return clothBW;
+  free(masses);
+  
+  return 0;
+}
+
+int ClothBWFromObjMesh::GenerateClothBWMT(ObjMesh * mesh, ClothBWMT ** clothBWMT, int numMaterialGroups, double * surfaceDensity, double * tensileStiffness, double * shearStiffness, double * bendStiffnessU, double * bendStiffnessV, double * damping, int numThreads, int * bu, int * bv, int addGravity)
+{ 
+  //mesh->triangulate();
+  
+  int numParticles;
+  double * restPositions;
+  int numTriangles;
+  int * triangles;
+  int numGroups;
+  int * triangleGroups;
+  
+  mesh->exportGeometry(&numParticles, &restPositions, &numTriangles, &triangles, &numGroups, &triangleGroups);
+
+  if (numGroups != numMaterialGroups)
+  {
+    printf("Mismatch in the number of groups. Mesh has %d groups.\n", numGroups);
+    return 1;
+  }
+  
+  // compute masses
+  vector<double> groupSurfaceMassDensity;
+  for(int i=0; i<numGroups; i++)
+    groupSurfaceMassDensity.push_back(surfaceDensity[i]);
+
+  vector<double> massesV;
+  mesh->computeMassPerVertex(groupSurfaceMassDensity, massesV);
+
+  double * masses = (double*) malloc (sizeof(double) * numParticles);
+  for(int i=0; i<numParticles; i++)
+    masses[i] = massesV[i];
+  
+  *clothBWMT = new ClothBWMT(numParticles,  masses, restPositions, numTriangles,
+                         triangles, triangleGroups, numGroups, tensileStiffness,
+                         shearStiffness, bendStiffnessU, bendStiffnessV,
+                         damping, addGravity, numThreads);
+  
+  free(restPositions);
+  free(triangles);
+  free(triangleGroups);
+  free(masses);
+  
+  return 0;
 }

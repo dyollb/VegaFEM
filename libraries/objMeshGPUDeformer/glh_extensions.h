@@ -183,9 +183,7 @@ int glh_init_extensions(const char *origReqExts)
 
     if (NULL == origReqExts)
         return GL_TRUE;
-    reqExts = (char*)malloc(strlen(origReqExts) + 5);
-    strcpy(reqExts, origReqExts);
-    //reqExts = strdup(origReqExts); // VS2013 forbids strdup because it's not standard 
+    reqExts = strdup(origReqExts);
     reqExtsLen = strlen(reqExts);
     if (NULL == unsupportedExts) {
         unsupportedExts = (char*)malloc(reqExtsLen + 2);

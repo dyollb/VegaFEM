@@ -1,24 +1,20 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "massSpringSystem" library, Copyright (C) 2007 CMU, 2009 MIT,         *
- *                                           2018 USC                    *
+ *                                           2015 USC                    *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Daniel Schroeder                         *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -503,34 +499,7 @@ double MassSpringSystem::GetTriangleSurfaceArea(double * p0, double * p1, double
   return 0.5 * sqrt(crossp[0]*crossp[0] + crossp[1]*crossp[1] + crossp[2]*crossp[2]);
 }
 
-double MassSpringSystem::ComputeEnergy(const double * u)
-{
-  double energy = 0.0;
-  AddEnergy(u, &energy, 0, numEdges);
-  return energy;
-}
-
-void MassSpringSystem::AddEnergy(const double * u, double * energy, int startEdge, int endEdge)
-{
-  for(int i=startEdge; i<endEdge; i++)
-  {
-    int group = edgeGroups[i];
-    int particleA = edges[2*i+0];
-    int particleB = edges[2*i+1];
-
-    double z[3]; // vector from A to B
-    z[0] = restPositions[3*particleB+0] + u[3*particleB+0] - restPositions[3*particleA+0] - u[3*particleA+0];    
-    z[1] = restPositions[3*particleB+1] + u[3*particleB+1] - restPositions[3*particleA+1] - u[3*particleA+1]; 
-    z[2] = restPositions[3*particleB+2] + u[3*particleB+2] - restPositions[3*particleA+2] - u[3*particleA+2];    
-
-    double len = sqrt(z[0]*z[0] + z[1]*z[1] + z[2]*z[2]);
-    double deltaLen = (len - restLengths[i]);
-
-    *energy += 0.5 * groupStiffness[group] * deltaLen * deltaLen;
-  }
-}
-
-void MassSpringSystem::ComputeForce(const double * u, double * f, bool addForce)
+void MassSpringSystem::ComputeForce(double * u, double * f, bool addForce)
 {
   if (!addForce)
     memset(f, 0, sizeof(double) * 3 * numParticles);
@@ -541,7 +510,7 @@ void MassSpringSystem::ComputeForce(const double * u, double * f, bool addForce)
     ComputeGravity(f, true);
 }
 
-void MassSpringSystem::AddForce(const double * u, double * f, int startEdge, int endEdge)
+void MassSpringSystem::AddForce(double * u, double * f, int startEdge, int endEdge)
 {
   for(int i=startEdge; i<endEdge; i++)
   {
@@ -611,7 +580,7 @@ void MassSpringSystem::GetStiffnessMatrixTopology(SparseMatrix ** stiffnessMatri
   *stiffnessMatrixTopology = new SparseMatrix(&KOutline);
 }
 
-void MassSpringSystem::ComputeStiffnessMatrix(const double * u, SparseMatrix * K, bool addMatrix)
+void MassSpringSystem::ComputeStiffnessMatrix(double * u, SparseMatrix * K, bool addMatrix)
 {
   if (!addMatrix)
     K->ResetToZero();
@@ -619,7 +588,7 @@ void MassSpringSystem::ComputeStiffnessMatrix(const double * u, SparseMatrix * K
   AddStiffnessMatrix(u, K, 0, numEdges);
 }
 
-void MassSpringSystem::AddStiffnessMatrix(const double * u, SparseMatrix * K, int startEdge, int endEdge)
+void MassSpringSystem::AddStiffnessMatrix(double * u, SparseMatrix * K, int startEdge, int endEdge)
 {
   for(int i=startEdge; i<endEdge; i++)
   {
@@ -662,84 +631,7 @@ void MassSpringSystem::AddStiffnessMatrix(const double * u, SparseMatrix * K, in
   }
 }
 
-void MassSpringSystem::ComputeEdgeInfo(int eid, const double * u, double * energy, double f[6], double K[36])
-{
-  int group = edgeGroups[eid];
-  int particleA = edges[2*eid+0];
-  int particleB = edges[2*eid+1];
-
-  double z[3]; // vector from A to B
-  z[0] = restPositions[3*particleB+0] + u[3*particleB+0] - restPositions[3*particleA+0] - u[3*particleA+0];
-  z[1] = restPositions[3*particleB+1] + u[3*particleB+1] - restPositions[3*particleA+1] - u[3*particleA+1];
-  z[2] = restPositions[3*particleB+2] + u[3*particleB+2] - restPositions[3*particleA+2] - u[3*particleA+2];
-
-  double len = sqrt(z[0]*z[0] + z[1]*z[1] + z[2]*z[2]);
-
-  if (energy)
-  {
-    double deltaLen = (len - restLengths[eid]);
-    *energy = 0.5 * groupStiffness[group] * deltaLen * deltaLen;
-  }
-
-  if (f)
-  {
-    double force[3]; // force on particle A
-    force[0] = groupStiffness[group] * (len - restLengths[eid]) * z[0] / len;
-    force[1] = groupStiffness[group] * (len - restLengths[eid]) * z[1] / len;
-    force[2] = groupStiffness[group] * (len - restLengths[eid]) * z[2] / len;
-
-    f[0] = -force[0];
-    f[1] = -force[1];
-    f[2] = -force[2];
-
-    f[3] = force[0];
-    f[4] = force[1];
-    f[5] = force[2];
-  }
-
-  if (K) 
-  {
-    double dFdz[9];
-    double invLen = 1.0 / len;
-
-    z[0] *= invLen;
-    z[1] *= invLen;
-    z[2] *= invLen;
-
-    memset(dFdz, 0, sizeof(double) * 9);
-    dFdz[0] = 1.0 - restLengths[eid] * invLen;
-    dFdz[4] = 1.0 - restLengths[eid] * invLen;
-    dFdz[8] = 1.0 - restLengths[eid] * invLen;
-
-    for(int j=0; j<3; j++)
-      for(int k=0; k<3; k++)
-        dFdz[3*k+j] += restLengths[eid] * z[j] * z[k] * invLen;
-
-    for(int j=0; j<9; j++)
-      dFdz[j] *= groupStiffness[group];
-
-    // write matrices in place
-    for(int j=0; j<3; j++)
-    {
-      for(int k=0; k<3; k++)
-      {
-        int row = j, col = k;
-        K[col * 6 + row] = dFdz[3 * k + j];
-
-        row = j, col = k + 3;
-        K[col * 6 + row] = -dFdz[3 * k + j];
-
-        row = j + 3, col = k;
-        K[col * 6 + row] = -dFdz[3 * k + j];
-
-        row = j + 3, col = k + 3;
-        K[col * 6 + row] = dFdz[3 * k + j];
-      }
-    }
-  }
-}
-
-void MassSpringSystem::ComputeDampingForce(const double * uvel, double * f, bool addForce)
+void MassSpringSystem::ComputeDampingForce(double * uvel, double * f, bool addForce)
 {
   if (!addForce)
     memset(f, 0, sizeof(double) * 3 * numParticles);
@@ -747,7 +639,7 @@ void MassSpringSystem::ComputeDampingForce(const double * uvel, double * f, bool
   AddDampingForce(uvel, f, 0, numEdges);
 }
 
-void MassSpringSystem::AddDampingForce(const double * uvel, double * f, int startEdge, int endEdge)
+void MassSpringSystem::AddDampingForce(double * uvel, double * f, int startEdge, int endEdge)
 {
   for(int i=startEdge; i<endEdge; i++)
   {
@@ -775,14 +667,14 @@ void MassSpringSystem::AddDampingForce(const double * uvel, double * f, int star
   }
 }
 
-void MassSpringSystem::ComputeStiffnessMatrixCorrection(const double * u, double * du, SparseMatrix * dK, bool addMatrix)
+void MassSpringSystem::ComputeStiffnessMatrixCorrection(double * u, double * du, SparseMatrix * dK, bool addMatrix)
 {
   if (!addMatrix)
     dK->ResetToZero();
   AddHessianApproximation(u, du, dK, 0, numEdges);
 }
 
-void MassSpringSystem::AddHessianApproximation(const double * u, double * du, SparseMatrix * dK, int startEdge, int endEdge)
+void MassSpringSystem::AddHessianApproximation(double * u, double * du, SparseMatrix * dK, int startEdge, int endEdge)
 {
   for(int i=startEdge; i<endEdge; i++)
   {

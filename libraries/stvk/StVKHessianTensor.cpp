@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC           *
+ * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC           *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -224,7 +220,7 @@ int StVKHessianTensor::ComputeHessianAtZero(int verbose)
   return 0;
 }
 
-void StVKHessianTensor::EvaluateHessianQuadraticForm(const double * phir, const double * phis, double * result)
+void StVKHessianTensor::EvaluateHessianQuadraticForm(double * phir, double * phis, double * result)
 {
   // reset result to zero
   memset(result,0,sizeof(double)*3*numVertices_);
@@ -241,8 +237,8 @@ void StVKHessianTensor::EvaluateHessianQuadraticForm(const double * phir, const 
     k = index.third;
     double * entry = pos->second;
 
-    const double * phisk = &phis[3 * k];
-    const double * phirj = &phir[3 * j];
+    double * phisk = &phis[3*k];
+    double * phirj = &phir[3*j];
 
     double * hijk0 = &entry[0];
     double * hijk1 = &entry[9];

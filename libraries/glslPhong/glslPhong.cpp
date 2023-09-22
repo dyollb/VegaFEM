@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "glslPhong" library , Copyright (C) 2018 USC                          *
+ * "glslPhong" library , Copyright (C) 2015 USC                          *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -39,7 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if defined(_WIN32) || defined(WIN32) || defined(linux) || defined(__linux__)
+#if defined(_WIN32) || defined(WIN32) || defined(linux)
   #define USE_GLEW
 #elif defined(__APPLE__)
   #include "openGL-headers.h"
@@ -78,12 +74,15 @@ char GLSLPhong::fragmentShaderStringAll [] = "varying vec3 normal, eyeVec;\n"
 "  {\n"
 "    final_color += gl_LightSource[i].ambient * gl_FrontMaterial.ambient;\n"
 "    vec3 L = normalize(lightDir[i]);\n"
-"    float lambert = max(dot(N,L), 0.0);\n"
-"    final_color += gl_LightSource[i].diffuse * gl_FrontMaterial.diffuse * lambert;\n"
-"    vec3 E = normalize(eyeVec);\n"
-"    vec3 R = reflect(-L, N);\n"
-"    float specular = pow(max(dot(R,E), 0.0), gl_FrontMaterial.shininess);\n"
-"    final_color += gl_LightSource[i].specular * gl_FrontMaterial.specular * specular;\n"
+"    float lambertTerm = dot(N,L);\n"
+"    if (lambertTerm > 0.0)\n"
+"    {\n"
+"      final_color += gl_LightSource[i].diffuse * gl_FrontMaterial.diffuse * lambertTerm;\n"
+"      vec3 E = normalize(eyeVec);\n"
+"      vec3 R = reflect(-L, N);\n"
+"      float specular = pow(max(dot(R, E), 0.0), gl_FrontMaterial.shininess);\n"
+"      final_color += gl_LightSource[i].specular * gl_FrontMaterial.specular * specular;\n"
+"    }\n"
 "  }\n"
 "  gl_FragColor = final_color;\n"
 "}\n";

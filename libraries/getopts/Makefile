@@ -5,17 +5,19 @@ ifndef CLEANFOLDER
 CLEANFOLDER=GETOPTS
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
-GETOPTS_OBJECTS=getopts.o commandLineParser.o
+GETOPTS_OBJECTS=getopts.o
 
 # the libraries this library depends on
 GETOPTS_LIBS=
 
 # the headers in this library
-GETOPTS_HEADERS=getopts.h commandLineParser.h
+GETOPTS_HEADERS=getopts.h
+
 
 GETOPTS_OBJECTS_FILENAMES=$(addprefix $(L)/getopts/, $(GETOPTS_OBJECTS))
 GETOPTS_HEADER_FILENAMES=$(addprefix $(L)/getopts/, $(GETOPTS_HEADERS))

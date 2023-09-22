@@ -1,35 +1,3 @@
-/*************************************************************************
- *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
- *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
- * All rights reserved.                                                  *
- *                                                                       *
- * Code authors: Jernej Barbic,                                          *
- * http://www.jernejbarbic.com/vega                                      *
- *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
- *           Doug L. James, Jovan Popovic                                *
- *                                                                       *
- * Funding: National Science Foundation, Link Foundation,                *
- *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
- *                                                                       *
- * This library is free software; you can redistribute it and/or         *
- * modify it under the terms of the BSD-style license that is            *
- * included with this library in the file LICENSE.txt                    *
- *                                                                       *
- * This library is distributed in the hope that it will be useful,       *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the file     *
- * LICENSE.TXT for more details.                                         *
- *                                                                       *
- *************************************************************************/
-
 #include <map>
 #include "objMeshGraph.h"
 using namespace std;
@@ -70,7 +38,7 @@ ObjMeshGraph::ObjMeshGraph(ObjMesh * objMesh_): objMesh(objMesh_)
       {
         int vtxA = face.getVertex(iVertex).getPositionIndex();
         int vtxB = face.getVertex((iVertex + 1) % face.getNumVertices()).getPositionIndex();
-
+ 
         // ensure that vtxA <= vtxB
         if (vtxA >= vtxB)
         {
@@ -78,7 +46,7 @@ ObjMeshGraph::ObjMeshGraph(ObjMesh * objMesh_): objMesh(objMesh_)
           vtxA = vtxB;
           vtxB = buffer;
         }
-
+ 
         meshEdges.insert(make_pair(make_pair(vtxA, vtxB), 0));
       }
     }
@@ -103,7 +71,7 @@ ObjMeshGraph::ObjMeshGraph(ObjMesh * objMesh_): objMesh(objMesh_)
       iter != meshEdges.end(); iter++)
   {
     iter->second = numMeshEdges;
-    numMeshEdges++;
+    numMeshEdges++; 
   }
 
   // build graph adjacency
@@ -170,9 +138,9 @@ ObjMeshGraph::ObjMeshGraph(ObjMesh * objMesh_): objMesh(objMesh_)
   numEdges = edges.size();
 
   printf("Graph generated.\n");
-  printf("Mesh vertices: %d\n", nObj);
-  printf("Mesh edges: %d\n", eObj);
-  printf("Mesh faces: %d\n", fObj);
+  printf("Mesh vertices: %d\n", nObj); 
+  printf("Mesh edges: %d\n", eObj); 
+  printf("Mesh faces: %d\n", fObj); 
 
   BuildVertexNeighbors();
 }
@@ -248,14 +216,14 @@ int ObjMeshGraph::graphID(int faceID, int siteIndex)
 
   if (graphVertex > numVertices)
   {
-    printf("Error: incorrect graph vertex (%d). faceID=%d site:%d\n",
+    printf("Error: incorrect graph vertex (%d). faceID=%d site:%d\n", 
       graphVertex, faceID, siteIndex);
   }
 
   return graphVertex;
 }
 
-Graph * ObjMeshGraph::GenerateVertexGraph(const ObjMesh * objMesh, int faceClique)
+Graph * ObjMeshGraph::GenerateVertexGraph(ObjMesh * objMesh, int faceClique)
 {
   // Generate springs:
   typedef pair<int,int> edge;

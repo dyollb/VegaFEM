@@ -1,23 +1,14 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
- *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
- *           Doug L. James, Jovan Popovic                                *
- *                                                                       *
- * Funding: National Science Foundation, Link Foundation,                *
- *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ * http://www.jernejbarbic.com/code                                      *
+ * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
+ * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -42,7 +33,7 @@ template<>
 class _xcopy<true> 
 {
 public:
-    inline static void f(const int N, const float * X, const int incX, float * Y, const int incY)
+    inline static void f(const int N, float * X, const int incX, float * Y, const int incY)
     {
       cblas_scopy(N,X,incX,Y,incY);
     }
@@ -52,7 +43,7 @@ template<>
 class _xcopy<false> 
 {
 public:
-    inline static void f(const int N, const double * X, const int incX, double * Y, const int incY)
+    inline static void f(const int N, double * X, const int incX, double * Y, const int incY)
     {
       cblas_dcopy(N,X,incX,Y,incY);
     }
@@ -155,7 +146,7 @@ public:
 };
 
 template<class real>
-real * SumMatrices(int m, int n, const real * mtx1, const real * mtx2, real * output)
+real * SumMatrices(int m, int n, real * mtx1, real * mtx2, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -172,7 +163,7 @@ real * SumMatrices(int m, int n, const real * mtx1, const real * mtx2, real * ou
 }
 
 template<class real>
-real * SubtractMatrices(int m, int n, const real * mtx1, const real * mtx2, real * output)
+real * SubtractMatrices(int m, int n, real * mtx1, real * mtx2, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -189,7 +180,7 @@ real * SubtractMatrices(int m, int n, const real * mtx1, const real * mtx2, real
 }
 
 template<class real>
-real * MultiplyMatrices(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
+real * MultiplyMatrices(int m, int p, int n, real * mtx1, real * mtx2, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -211,19 +202,7 @@ real * MultiplyMatrices(int m, int p, int n, const real * mtx1, const real * mtx
 }
 
 template<class real>
-void MultiplyMatricesAdd(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
-{
-  _xgemm<sizeof(real)==sizeof(float)>::f(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, p, 1.0, mtx1, m, mtx2, p, 1.0, output, m);
-}
-
-template<class real>
-void MultiplyMatricesSub(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
-{
-  _xgemm<sizeof(real)==sizeof(float)>::f(CblasColMajor, CblasNoTrans, CblasNoTrans, m, n, p, -1.0, mtx1, m, mtx2, p, 1.0, output, m);
-}
-
-template<class real>
-real * MultiplyMatricesT(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
+real * MultiplyMatricesT(int m, int p, int n, real * mtx1, real * mtx2, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -245,19 +224,7 @@ real * MultiplyMatricesT(int m, int p, int n, const real * mtx1, const real * mt
 }
 
 template<class real>
-void MultiplyMatricesTAdd(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
-{
-  _xgemm<sizeof(real)==sizeof(float)>::f(CblasColMajor, CblasTrans, CblasNoTrans, m, n, p, 1.0, mtx1, p, mtx2, p, 1.0, output, m);
-}
-
-template<class real>
-void MultiplyMatricesTSub(int m, int p, int n, const real * mtx1, const real * mtx2, real * output)
-{
-  _xgemm<sizeof(real)==sizeof(float)>::f(CblasColMajor, CblasTrans, CblasNoTrans, m, n, p, -1.0, mtx1, p, mtx2, p, 1.0, output, m);
-}
-
-template<class real>
-real * ScalarMultiplyMatrix(int m, int n, real alpha, const real * mtx, real * output)
+real * ScalarMultiplyMatrix(int m, int n, real alpha, real * mtx, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -276,7 +243,7 @@ real * ScalarMultiplyMatrix(int m, int n, real alpha, const real * mtx, real * o
 
 // computes Euclidean norm of a vector
 template <class real>
-real VectorNorm(int m, const real * vec)
+real VectorNorm(int m, real * vec)
 {
   return _xnrm2<sizeof(real)==sizeof(float)>::f(m, vec, 1);
 }

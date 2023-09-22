@@ -5,17 +5,19 @@ ifndef CLEANFOLDER
 CLEANFOLDER=COROTATIONALLINEARFEM
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
-COROTATIONALLINEARFEM_OBJECTS=corotationalLinearFEM.o
+COROTATIONALLINEARFEM_OBJECTS=corotationalLinearFEM.o corotationalLinearFEMMT.o
 
 # the libraries this library depends on
 COROTATIONALLINEARFEM_LIBS=polarDecomposition volumetricMesh sparseMatrix
 
 # the headers in this library
-COROTATIONALLINEARFEM_HEADERS=corotationalLinearFEM.h
+COROTATIONALLINEARFEM_HEADERS=corotationalLinearFEM.h corotationalLinearFEMMT.h
+
 
 COROTATIONALLINEARFEM_OBJECTS_FILENAMES=$(addprefix $(L)/corotationalLinearFEM/, $(COROTATIONALLINEARFEM_OBJECTS))
 COROTATIONALLINEARFEM_HEADER_FILENAMES=$(addprefix $(L)/corotationalLinearFEM/, $(COROTATIONALLINEARFEM_HEADERS))

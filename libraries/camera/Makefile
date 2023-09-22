@@ -5,17 +5,19 @@ ifndef CLEANFOLDER
 CLEANFOLDER=CAMERA
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
-CAMERA_OBJECTS=camera.o cameraChangeLoad.o
+CAMERA_OBJECTS=camera.o
 
 # the libraries this library depends on
 CAMERA_LIBS=
 
 # the headers in this library
-CAMERA_HEADERS=camera.h cameraChangeLoad.h
+CAMERA_HEADERS=camera.h
+
 
 CAMERA_OBJECTS_FILENAMES=$(addprefix $(L)/camera/, $(CAMERA_OBJECTS))
 CAMERA_HEADER_FILENAMES=$(addprefix $(L)/camera/, $(CAMERA_HEADERS))

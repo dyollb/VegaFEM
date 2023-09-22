@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "isotropic hyperelastic FEM" library , Copyright (C) 2018 USC         *
+ * "isotropic hyperelastic FEM" library , Copyright (C) 2015 USC         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Fun Shing Sin                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -73,21 +69,21 @@ public:
   IsotropicHyperelasticFEM(TetMesh * tetMesh, IsotropicMaterial * isotropicMaterial, double inversionThreshold=-DBL_MAX, bool addGravity=false, double g=9.81);
   virtual ~IsotropicHyperelasticFEM();
 
-  double ComputeEnergy(const double * u); // get the nonlinear elastic strain energy
+  double ComputeEnergy(double * u); // get the nonlinear elastic strain energy
 
   // get the nonlinear internal forces
   // both vertex displacements "u" and internal forces refer to the vertices of the simulation mesh
   // they must be (pre-allocated) vectors of length 3 * numVertices
   // the internal forces are returned with the sign corresponding to f_int(x) on the left side of the equation M * x'' + f_int(x) = f_ext
   // i.e., the computed internal forces are negatives of the actual physical internal forces acting on the material
-  void ComputeForces(const double * u, double * internalForces);
+  void ComputeForces(double * u, double * internalForces);
 
   // allocate memory for the non-zero entries of the stiffness matrix
   void GetStiffnessMatrixTopology(SparseMatrix ** tangentStiffnessMatrix);
   // get the nonlinear stiffness matrix given the vertex displacement vector u
-  void GetTangentStiffnessMatrix(const double * u, SparseMatrix * tangentStiffnessMatrix);
+  void GetTangentStiffnessMatrix(double * u, SparseMatrix * tangentStiffnessMatrix);
   // get both nonlinear internal forces and nonlinear stiffness matrix
-  void GetForceAndTangentStiffnessMatrix(const double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix);
+  void GetForceAndTangentStiffnessMatrix(double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix);
 
   // compute damping forces based on the velocity of the vertices,
   // see p6 section 6.2 of [Irving 04]
@@ -100,28 +96,20 @@ public:
 
   void SetMaterial(IsotropicMaterial * isotropicMaterial_) { isotropicMaterial = isotropicMaterial_; }
 
-  // enforces the tangent stiffness matrix to be symmetric positive-definite (which is good for stability)
-  void EnforceSPD(bool enforceSPD) { this->enforceSPD = enforceSPD; }
-
   // === Advanced functions below; you normally do not need to use them: ===
-  // Computes strain energy, internal forces, and/or tangent stiffness matrix, 
-  // It returns 0 on success, and non-zero on failure.
-  virtual int GetEnergyAndForceAndTangentStiffnessMatrixHelper(const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix);
+  // Computes strain energy, internal forces, and/or tangent stiffness matrix, as requested by computationMode. It returns 0 on success, and non-zero on failure.
+  // computationMode:
+  // bit 0: compute energy
+  // bit 1: compute internal force
+  // bit 2: compute stiffness matrix
+  typedef enum { COMPUTE_ENERGY=1, COMPUTE_INTERNALFORCES=2, COMPUTE_TANGENTSTIFFNESSMATRIX=4 } computationModeType;
+  virtual int GetEnergyAndForceAndTangentStiffnessMatrixHelper(double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode);
   // Initialization for "GetEnergyAndForceAndTangentStiffnessMatrixPrologue" (must always be called before calling "GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse")
-  void GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix);
-  // The workhorse (main computational routine); processes mesh elements startEl <= el < endEl 
-  // (assembles partial strain energy, internal forces, and/or tangent stiffness matrix. They can be nullptr.
-  // It returns 0 on success, and non-zero on failure.)
-  int GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(int startEl, int endEl, const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix);
-  // the same as above, except that it processes a single mesh element el ans store the date in dense format.
-  void GetElementLocalEnergyAndForceAndMatrix(int el, const double * u, double * energy, double * internalForces, double * tangentStiffnessMatrix);
+  void GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode);
+  // The workhorse (main computational routine); processes mesh elements startEl <= el < endEl (assembles partial strain energy, internal forces, and/or tangent stiffness matrix, as requested by computationMode. It returns 0 on success, and non-zero on failure.
+  int GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(int startEl, int endEl, double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode);
 
 protected:
-  void ComputeTetVolume(int el);
-  void ComputeAreaWeightedVertexNormals(int el);
-  void PrepareDeformGrad(int el);
-  // compute local energy, internalForces, tangentStiffnessMatrix assuming currentVerticesPosition is updated
-  int ComputeElementLocalData(int el, const double * u, double * energy, double internalForces[12], double tangentStiffnessMatrix[144]);
   TetMesh * tetMesh; // the tet mesh
   IsotropicMaterial * isotropicMaterial; // the material 
 
@@ -139,8 +127,6 @@ protected:
 
   bool addGravity;
   double g;
-
-  bool enforceSPD;
 
   // this is the b=(A1N1 + A2N2 + A3N3) in the paper,
   // see p.3 section 4
@@ -228,16 +214,6 @@ protected:
            | m20 m21 m22 |   | 6 7 8 |
   */
   int teranToRowMajorMatrix[9];
-
-  // enforce SPD:
-  // on the "A" matrix in Teran's paper, Section 8
-  // Aij is the entry in row i and column j of 3x3 matrix A (which is symmetric)
-  void FixPositiveIndefiniteness(double & A11, double & A12, double & A13,
-                                 double & A22, double & A23, double & A33);
-
-  // on the "B" matrix in Teran's paper, Section 8
-  // Bij is the entry in row i and column j of 2x2 matrix B (which is symmetric)
-  void FixPositiveIndefiniteness(double & B11, double & B12);
 };
 
 #endif

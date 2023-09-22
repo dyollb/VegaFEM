@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "quaternion" library , Copyright (C) 2007 CMU                         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -107,7 +103,7 @@ public:
   // There are two quaternions corresponding to a rotation (and they have opposite signs). You can't directly control which one you get, but you can force the real part to be non-negative by a subsequent call to MoveToRightHalfSphere() .
   // This implementation follows David Baraff's SIGGRAPH course notes:
   // http://www.cs.cmu.edu/~baraff/pbm/pbm.html
-  static Quaternion Matrix2Quaternion(const real R[9]);
+  static Quaternion Matrix2Quaternion(real * R);
   
   // Returns the angle of rotation (in radians), and the unit rotation axis corresponding to the quaternion.
   // Assumes a unit quaternion (use Normalize() to remove any noise due to floating point errors).

@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "sparseSolver" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC   *
+ * "sparseSolver" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC   *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -29,6 +25,23 @@
  * LICENSE.TXT for more details.                                         *
  *                                                                       *
  *************************************************************************/
+
+/*
+
+  Solves A * x = rhs, where A is sparse, usually large, and symmetric.
+
+  The solution is obtained using the SPOOLES library (which is free software).
+  The solution method is direct (not iterative). As such, convergence
+  is often very robust, and there is no need to tune convergence parameters,
+  unlike, say, in the Conjugate gradient method.
+  Memory requirements are minimized by re-ordering the matrix before applying
+  Cholesky decomposition.
+  However, for very large systems (e.g. 200,000 x 200,000 matrices on a 
+  2Gb machine), the Cholesky decomposition might run out of memory.
+  
+  Jernej Barbic, MIT, 2007-2009
+
+*/
 
 #include "SPOOLESSolver.h"
 #include "sparseSolverAvailability.h"
@@ -180,6 +193,7 @@ SPOOLESSolver::SPOOLESSolver(const SparseMatrix * A, int verbose)
 
 SPOOLESSolver::~SPOOLESSolver()
 {
+  DisabledSolverError();
 }
 
 void SPOOLESSolver::DisabledSolverError()

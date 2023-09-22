@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "forceModel" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
+ * "forceModelBase" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -48,17 +44,21 @@ public:
 
   inline int Getr() { return r; }
 
-  virtual double GetElasticEnergy(const double * u) { return 0.0; }
-  virtual void GetInternalForce(const double * u, double * internalForces) = 0;
+  virtual void GetInternalForce(double * u, double * internalForces) = 0;
   virtual void GetTangentStiffnessMatrixTopology(SparseMatrix ** tangentStiffnessMatrix) = 0;
-  virtual void GetTangentStiffnessMatrix(const double * u, SparseMatrix * tangentStiffnessMatrix) = 0; 
+  virtual void GetTangentStiffnessMatrix(double * u, SparseMatrix * tangentStiffnessMatrix) = 0; 
 
   // sometimes computation time can be saved if we know that we will need both internal forces and tangent stiffness matrices:
-  virtual void GetForceAndMatrix(const double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix); 
+  virtual void GetForceAndMatrix (double * u, double * internalForces, SparseMatrix * tangentStiffnessMatrix); 
 
   // reset routines
   virtual void ResetToZero() {}
   virtual void Reset(double * q) {}
+
+  // test the stiffness matrix, using finite differences
+  // q is the configuration to test, dq is a small delta
+  // if the stiffness matrix is correct, f(q) - f(q + eps * dq) - eps * K(q) * dq should be O(eps^2)
+  void TestStiffnessMatrix(double * q, double * dq);
 
 protected:
   int r;

@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC *
+ * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Yijing Li                                *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -40,7 +36,6 @@
 #include "volumetricMeshENuMaterial.h"
 #include "volumetricMeshOrthotropicMaterial.h"
 #include "volumetricMeshMooneyRivlinMaterial.h"
-#include "range.h"
 using namespace std;
 
 double VolumetricMesh::density_default = 1000;
@@ -82,7 +77,9 @@ VolumetricMesh::VolumetricMesh(void * binaryInputStream, int numElementVertices_
 
 VolumetricMesh::~VolumetricMesh()
 {
-  delete [] vertices;
+  for(int i=0; i<numVertices; i++)
+    delete(vertices[i]);
+  free(vertices);
 
   for(int i=0; i<numElements; i++)
     free(elements[i]);
@@ -195,7 +192,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
       {
         // format is numVertices, 3, 0, 0
         sscanf(lineBuffer, "%d", &numVertices);  // ignore 3, 0, 0
-        vertices = new Vec3d [numVertices];
+        vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
       }
       else
       {
@@ -296,7 +293,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
           ch++;
       }
 
-      vertices[countNumVertices] = Vec3d(pos);
+      vertices[countNumVertices] = new Vec3d(pos);
       countNumVertices++;
     }
 
@@ -521,7 +518,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
                 &R[0], &R[1], &R[2], &R[3], &R[4], &R[5], &R[6], &R[7], &R[8]) == 15)
               enoughParameters = true;
           }
-          else if (strcmp(subType,"_N3G3") == 0)
+          else if(strcmp(subType,"_N3G3") == 0)
           {
             // *ORTHOTROPIC_N3G3
             // parse nu12,nu23,nu31,G12,G23,G31
@@ -529,7 +526,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
             if (sscanf(ch, "%lf,%lf,%lf,%lf,%lf,%lf", &nu12, &nu23, &nu31, &G12, &G23, &G31) == 6)
               enoughParameters = true;
           }
-          else if (strcmp(subType,"_N1G1R9") == 0)
+          else if(strcmp(subType,"_N1G1R9") == 0)
           {
             // *ORTHOTROPIC_N1G1R9
             // parse nu,G,R0,R1,R2,R3,R4,R5,R6,R7,R8
@@ -540,36 +537,36 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
               enoughParameters = true;
             }
           }
-          else if (strcmp(subType, "_N1G1") == 0)
+          else if(strcmp(subType, "_N1G1") == 0)
           {
             // *ORTHOTROPIC_N1G1
             // parse nu,G
             // R is default (identity)
-            if (sscanf(ch, "%lf,%lf",&nu,&G) == 2)
+            if(sscanf(ch, "%lf,%lf",&nu,&G) == 2)
             {
               useNuAndG = true;
               enoughParameters = true;
             }
           }
-          else if (strcmp(subType,"_N1R9") == 0)
+          else if(strcmp(subType,"_N1R9") == 0)
           {
             // *ORTHOTROPIC_N1R9
             // parse nu,R0,R1,R2,R3,R4,R5,R6,R7,R8
             // G is default (1.0)
-            if (sscanf(ch,"%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf",
+            if(sscanf(ch,"%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf",
                 &nu, &R[0], &R[1], &R[2], &R[3], &R[4], &R[5], &R[6], &R[7], &R[8]) == 10)
             {
               useNuAndG = true;
               enoughParameters = true;
             }
           }
-          else if (strcmp(subType,"_N1") == 0)
+          else if(strcmp(subType,"_N1") == 0)
           {
             // *ORTHOTROPIC_N1
             // parse nu
             // G is default (1.0)
             // R is default (identity)
-            if (sscanf(ch,"%lf", &nu) == 1)
+            if(sscanf(ch,"%lf", &nu) == 1)
             {
               useNuAndG = true;
               enoughParameters = true;
@@ -581,7 +578,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
             throw 14;
           }
 
-          if (useNuAndG && (nu > -1.0) && (nu < 0.5)) // if nu is not in this range, then G_ij is still 0, finally produce an error
+          if(useNuAndG && (nu > -1.0) && (nu < 0.5)) // if nu is not in this range, then G_ij is still 0, finally produce an error
           {
             // formulas from:
             // Yijing Li, Jernej Barbic: Stable Corotational Materials, Symposium on Computer Animation 2014
@@ -676,7 +673,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
       // seek for setNameC
       int setNum = -1;
       map<string,int>::iterator it = setMap.find(string(setNameC));
-      if (it != setMap.end())
+      if(it != setMap.end()) 
       {
       	setNum = it->second;
       }
@@ -689,7 +686,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
       // seek for materialNameC
       int materialNum = -1;
       it = materialMap.find(string(materialNameC));
-      if (it != materialMap.end())
+      if(it != materialMap.end()) 
       {
       	materialNum = it->second;
       }
@@ -720,7 +717,7 @@ void VolumetricMesh::loadFromAscii(const char * filename, elementType * elementT
       {
         int newElement = atoi(pch);
         int ind = newElement-oneIndexedElements;
-        if (ind >= numElements || ind < 0)
+        if(ind >= numElements || ind < 0) 
         {
           printf("Error: set element index: %d out of bounds.\n", newElement);
           throw 21;
@@ -760,7 +757,7 @@ VolumetricMesh::VolumetricMesh(int numVertices_, double * vertices_,
   numSets = 1;
   numRegions = 1;
 
-  vertices = new Vec3d [numVertices];
+  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
   elements = (int**) malloc (sizeof(int*) * numElements);
   elementMaterial = (int*) malloc (sizeof(int) * numElements);
   materials = (Material**) malloc (sizeof(Material*) * numMaterials);
@@ -768,7 +765,7 @@ VolumetricMesh::VolumetricMesh(int numVertices_, double * vertices_,
   regions = (Region**) malloc (sizeof(Region*) * numRegions);
 
   for(int i=0; i<numVertices; i++)
-    vertices[i] = Vec3d(vertices_[3*i+0], vertices_[3*i+1], vertices_[3*i+2]);
+    vertices[i] = new Vec3d(vertices_[3*i+0], vertices_[3*i+1], vertices_[3*i+2]);
 
   Material * material = new ENuMaterial("defaultMaterial", density, E, nu);
   materials[0] = material;
@@ -807,7 +804,7 @@ VolumetricMesh::VolumetricMesh(int numVertices_, double * vertices_,
   numSets = numSets_;
   numRegions = numRegions_;
 
-  vertices = new Vec3d [numVertices];
+  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
   elements = (int**) malloc (sizeof(int*) * numElements);
   elementMaterial = (int*) malloc (sizeof(int) * numElements);
   materials = (Material**) malloc (sizeof(Material*) * numMaterials);
@@ -815,7 +812,7 @@ VolumetricMesh::VolumetricMesh(int numVertices_, double * vertices_,
   regions = (Region**) malloc (sizeof(Region*) * numRegions);
 
   for(int i=0; i<numVertices; i++)
-    vertices[i] = Vec3d(vertices_[3*i+0], vertices_[3*i+1], vertices_[3*i+2]);
+    vertices[i] = new Vec3d(vertices_[3*i+0], vertices_[3*i+1], vertices_[3*i+2]);
 
   int * v = (int*) malloc (sizeof(int) * numElementVertices);
   for(int i=0; i<numElements; i++)
@@ -911,7 +908,7 @@ void VolumetricMesh::loadFromBinaryGeneric(void * binaryInputStream_, elementTyp
     throw 3; 
   }
 
-  vertices = new Vec3d [numVertices];
+  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
 
   // input all the vertices
   double * doubleTempVec = (double *) malloc (sizeof(double) * 3 * numVertices);
@@ -923,7 +920,7 @@ void VolumetricMesh::loadFromBinaryGeneric(void * binaryInputStream_, elementTyp
 
   for(int vertexIndex=0; vertexIndex<numVertices; vertexIndex++)
   {
-    vertices[vertexIndex] = Vec3d(&doubleTempVec[vertexIndex*3]);
+    vertices[vertexIndex] = new Vec3d(&doubleTempVec[vertexIndex*3]);
   }
   free(doubleTempVec);
 
@@ -1175,9 +1172,9 @@ void VolumetricMesh::loadFromBinaryGeneric(void * binaryInputStream_, elementTyp
 VolumetricMesh::VolumetricMesh(const VolumetricMesh & volumetricMesh)
 {
   numVertices = volumetricMesh.numVertices;
-  vertices = new Vec3d [numVertices];
+  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
   for(int i=0; i<numVertices; i++)
-    vertices[i] = volumetricMesh.vertices[i];
+    vertices[i] = new Vec3d(*(volumetricMesh.vertices[i]));
 
   numElementVertices = volumetricMesh.numElementVertices;
   numElements = volumetricMesh.numElements;
@@ -1243,7 +1240,7 @@ int VolumetricMesh::saveToAscii(const char * filename, elementType elementType_)
           
   for(int i=0; i < numVertices; i++)  
   {
-    const Vec3d & v = getVertex(i);
+    Vec3d v = *getVertex(i);
     fprintf(fout,"%d %.15G %.15G %.15G\n", i+1, v[0], v[1], v[2]);
   }   
   fprintf(fout, "\n");
@@ -1424,7 +1421,7 @@ int VolumetricMesh::saveToBinary(FILE * binaryOutputStream, unsigned int * bytes
   // output the vertices (3 doubles x numVertices)
   for(int vertexIndex = 0; vertexIndex < numVertices; vertexIndex++)
   {
-    const Vec3d & v = getVertex(vertexIndex);
+    Vec3d v = *getVertex(vertexIndex);
     double v_array[3];
     v.convertToArray(v_array);
     itemsWritten = 3;
@@ -1795,7 +1792,7 @@ VolumetricMesh::elementType VolumetricMesh::getElementType(void * fin_, int memo
   if ((int)genericRead(&eleType, sizeof(int), 1, fin) != 1)
   {
     printf("Error in VolumetricMesh::getElementType: cannot read the element type from the stream\n");
-    throw 1;
+    exit(0);
   }
   
   // rewind the size of an integer and a double
@@ -1851,7 +1848,7 @@ Vec3d VolumetricMesh::getElementCenter(int el) const
 {
   Vec3d pos(0,0,0);
   for(int i=0; i<numElementVertices; i++)
-    pos += getVertex(el,i);
+    pos += *getVertex(el,i);
 
   pos *= 1.0 / numElementVertices;
 
@@ -1905,7 +1902,7 @@ double VolumetricMesh::getMass() const
   double mass = 0.0;
   for(int i=0; i< getNumRegions(); i++)
   {
-    const Region * region = getRegion(i);
+    Region * region = getRegion(i);
     double density = getMaterial(region->getMaterialIndex())->getDensity();
     set<int> setElements; // elements in the region
     getSet(region->getSetIndex())->getElements(setElements);
@@ -1934,7 +1931,7 @@ void VolumetricMesh::getInertiaParameters(double & mass, Vec3d & centerOfMass, M
   // compute mass, center of mass, inertia tensor
   for(int i=0; i< getNumRegions(); i++)
   {
-    const Region * region = getRegion(i);
+    Region * region = getRegion(i);
     double density = getMaterial(region->getMaterialIndex())->getDensity();
     set<int> setElements; // elements in the region
     getSet(region->getSetIndex())->getElements(setElements);
@@ -1989,7 +1986,10 @@ void VolumetricMesh::getMeshGeometricParameters(Vec3d & centroid, double * radiu
   // compute centroid
   centroid = Vec3d(0, 0, 0);
   for(int i=0; i < numVertices ; i++)
-    centroid += getVertex(i);
+  {
+    Vec3d * vertex = getVertex(i);
+    centroid += *vertex;
+  }
 
   centroid /= numVertices;
 
@@ -1997,16 +1997,11 @@ void VolumetricMesh::getMeshGeometricParameters(Vec3d & centroid, double * radiu
   *radius = 0;
   for(int i=0; i < numVertices; i++)
   {
-    Vec3d vertex = getVertex(i);
-    double dist = len(vertex - centroid);
+    Vec3d * vertex = getVertex(i);
+    double dist = len(*vertex - centroid);
     if (dist > *radius)
       *radius = dist;
   }
-}
-
-BoundingBox VolumetricMesh::getBoundingBox() const
-{
-  return BoundingBox(makeRange(vertices, vertices+numVertices));
 }
 
 int VolumetricMesh::getClosestVertex(Vec3d pos) const
@@ -2017,8 +2012,8 @@ int VolumetricMesh::getClosestVertex(Vec3d pos) const
 
   for(int i=0; i<numVertices; i++)
   {
-    const Vec3d & vertexPosition = vertices[i];
-    double dist = len(pos - vertexPosition);
+    Vec3d * vertexPosition = vertices[i];
+    double dist = len(pos - *vertexPosition);
     if (dist < closestDist)
     {
       closestDist = dist;
@@ -2113,7 +2108,9 @@ void VolumetricMesh::propagateRegionsToElements()
     Region * region = regions[regionIndex];
     int materialIndex = region->getMaterialIndex();
 
-    set<int> & setElements = sets[region->getSetIndex()]->getElements();
+    set<int> setElements;
+
+    sets[region->getSetIndex()]->getElements(setElements);
 
     for(set<int> :: iterator iter = setElements.begin(); iter != setElements.end(); iter++)
     {
@@ -2161,10 +2158,10 @@ int VolumetricMesh::generateInterpolationWeights(int numTargetLocations,
       int assignedZero = 0;
       for(int ii=0; ii< numElementVertices; ii++)
       {
-        const Vec3d & vpos = getVertex(element, ii);
-        if (len(vpos-pos) < minDistance)
+        Vec3d * vpos = getVertex(element, ii);
+        if (len(*vpos-pos) < minDistance)
         {
-          minDistance = len(vpos-pos);
+          minDistance = len(*vpos-pos);
         }
       }
 
@@ -2295,11 +2292,6 @@ int VolumetricMesh::loadInterpolationWeights(const char * filename, int numTarge
     if (feof(fin))
     {
       printf("Error: interpolation file is too short. Num vertices in interp file: %d . Should be: %d .\n", numReadTargetLocations, numTargetLocations);
-      free(*vertices_);
-      free(*weights);
-      *vertices_ = NULL;
-      *weights = NULL;
-      fclose(fin);
       return 1;
     }
 
@@ -2309,11 +2301,6 @@ int VolumetricMesh::loadInterpolationWeights(const char * filename, int numTarge
     if (currentVertex != numReadTargetLocations)
     {
       printf("Error: consecutive vertex index at position %d mismatch.\n", currentVertex);
-      free(*vertices_);
-      free(*weights);
-      *vertices_ = NULL;
-      *weights = NULL;
-      fclose(fin);
       return 1;
     }
 
@@ -2377,7 +2364,7 @@ int VolumetricMesh::loadInterpolationWeightsBinary(FILE * fin, int * numTargetLo
   return 0;
 }
 
-int VolumetricMesh::saveInterpolationWeights(const char * filename, int numTargetLocations, int numElementVertices_, const int * vertices_, const double * weights)
+int VolumetricMesh::saveInterpolationWeights(const char * filename, int numTargetLocations, int numElementVertices_, int * vertices_, double * weights)
 {
   FILE * fout = fopen(filename, "w");
   if (!fout)
@@ -2401,7 +2388,7 @@ int VolumetricMesh::saveInterpolationWeights(const char * filename, int numTarge
   return 0;
 }
 
-int VolumetricMesh::saveInterpolationWeightsBinary(const char * filename, int numTargetLocations, int numElementVertices_, const int * vertices_, const double * weights)
+int VolumetricMesh::saveInterpolationWeightsBinary(const char * filename, int numTargetLocations, int numElementVertices_, int * vertices_, double * weights)
 {
   FILE * fout = fopen(filename, "wb");
   if (!fout)
@@ -2417,7 +2404,7 @@ int VolumetricMesh::saveInterpolationWeightsBinary(const char * filename, int nu
   return code;
 }
 
-int VolumetricMesh::saveInterpolationWeightsBinary(FILE * fout, int numTargetLocations, int numElementVertices_, const int * vertices_, const double * weights)
+int VolumetricMesh::saveInterpolationWeightsBinary(FILE * fout, int numTargetLocations, int numElementVertices_, int * vertices_, double * weights)
 {
   int buffer[2];
   buffer[0] = numTargetLocations;
@@ -2480,19 +2467,19 @@ void VolumetricMesh::exportMeshGeometry(int * numVertices_, double ** vertices_,
   if (numElementVertices_ != NULL) 
     *numElementVertices_ = numElementVertices;
 
-  if (vertices_ != NULL)
+  if(vertices_ != NULL) 
   {
     *vertices_ = (double*) malloc (sizeof(double) * 3 * numVertices);
     for(int i=0; i<numVertices; i++)
     {
-      const Vec3d & v = getVertex(i);
+      Vec3d v = *getVertex(i);
       (*vertices_)[3*i+0] = v[0];
       (*vertices_)[3*i+1] = v[1];
       (*vertices_)[3*i+2] = v[2];
     }
   }
 
-  if (elements_ != NULL)
+  if(elements_ != NULL) 
   {
     *elements_ = (int*) malloc (sizeof(int) * numElementVertices * numElements);
     for(int i=0; i<numElements; i++)
@@ -2501,12 +2488,6 @@ void VolumetricMesh::exportMeshGeometry(int * numVertices_, double ** vertices_,
         (*elements_)[numElementVertices * i + j] = elements[i][j];
     }
   }
-}
-
-void VolumetricMesh::exportMeshGeometry(std::vector<Vec3d> & vertexBuffer) const
-{
-  vertexBuffer.resize(numVertices);
-  memcpy(vertexBuffer.data(), vertices, sizeof(double) * 3 * numVertices);
 }
 
 void VolumetricMesh::computeGravity(double * gravityForce, double g, bool addForce) const
@@ -2522,18 +2503,18 @@ void VolumetricMesh::computeGravity(double * gravityForce, double g, bool addFor
     double density = getElementDensity(el);
     double mass = density * volume;
     for(int j=0; j<getNumElementVertices(); j++)
-      gravityForce[3 * getVertexIndex(el,j) + 1] -= invNumElementVertices * mass * g; // gravity assumed to act in negative y-direction
+      gravityForce[3 * getVertexIndex(el,j) + 2] -= invNumElementVertices * mass * g; // gravity assumed to act in negative z-direction
   }  
 }
 
-void VolumetricMesh::applyDeformation(const double * u)
+void VolumetricMesh::applyDeformation(double * u)
 {
   for(int i=0; i<numVertices; i++)
   {
-    Vec3d & v = getVertex(i);
-    v[0] += u[3*i+0];
-    v[1] += u[3*i+1];
-    v[2] += u[3*i+2];
+    Vec3d * v = getVertex(i);
+    (*v)[0] += u[3*i+0];
+    (*v)[1] += u[3*i+1];
+    (*v)[2] += u[3*i+2];
   }
 }
 
@@ -2542,19 +2523,19 @@ void VolumetricMesh::applyLinearTransformation(double * pos, double * R)
 {
   for(int i=0; i<numVertices; i++)
   {
-    Vec3d & v = getVertex(i);
+    Vec3d * v = getVertex(i);
     
     double newPos[3];
     for(int j=0; j<3; j++)
     {
       newPos[j] = pos[j];
       for(int k=0; k<3; k++)
-        newPos[j] += R[3*j+k] * v[k];
+        newPos[j] += R[3*j+k] * (*v)[k];
     }
 
-    v[0] = newPos[0];
-    v[1] = newPos[1];
-    v[2] = newPos[2];
+    (*v)[0] = newPos[0];
+    (*v)[1] = newPos[1];
+    (*v)[2] = newPos[2];
   }
 }
 
@@ -2575,13 +2556,13 @@ VolumetricMesh::VolumetricMesh(const VolumetricMesh & volumetricMesh, int numEle
 
   // copy vertices into place and also into vertexMap
   numVertices = vertexSet.size();
-  vertices = new Vec3d [numVertices]; 
+  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
   set<int> :: iterator iter;
   int vertexNo = 0;
   map<int, int> vertexMap;
   for(iter = vertexSet.begin(); iter != vertexSet.end(); iter++)
   {
-    vertices[vertexNo] = volumetricMesh.getVertex(*iter);
+    vertices[vertexNo] = new Vec3d(*(volumetricMesh.getVertex(*iter)));
     vertexMap.insert(make_pair(*iter,vertexNo));
     vertexNo++;
   }
@@ -2626,13 +2607,13 @@ VolumetricMesh::VolumetricMesh(const VolumetricMesh & volumetricMesh, int numEle
   map<int,int> oldToNewSetIndex;
   for(int oldSetIndex=0; oldSetIndex < volumetricMesh.getNumSets(); oldSetIndex++)
   {
-    const Set * oldSet = volumetricMesh.getSet(oldSetIndex);
+    Set * oldSet = volumetricMesh.getSet(oldSetIndex);
     set<int> oldElements;
     oldSet->getElements(oldElements);
 
     for(set<int> :: iterator iter = oldElements.begin(); iter != oldElements.end(); iter++)
     {
-      if (*iter < 0)
+      if(*iter < 0)
       {
         printf("Internal error 2.\n");
         exit(1);
@@ -2654,7 +2635,7 @@ VolumetricMesh::VolumetricMesh(const VolumetricMesh & volumetricMesh, int numEle
       Set * newSet = new Set(oldSet->getName());
       for(unsigned int j=0; j<newElements.size(); j++)
       {
-        if (newElements[j] < 0)
+        if(newElements[j] < 0)
         {
           printf("Internal error 3.\n");
           exit(1);
@@ -2677,7 +2658,7 @@ VolumetricMesh::VolumetricMesh(const VolumetricMesh & volumetricMesh, int numEle
   vector<Region*> vregions;
   for(int i=0; i < numRegions; i++)
   {
-    const Region * sregion = volumetricMesh.getRegion(i);
+    Region * sregion = volumetricMesh.getRegion(i);
     map<int,int> :: iterator iter = oldToNewSetIndex.find(sregion->getSetIndex());
     if (iter != oldToNewSetIndex.end())
     {
@@ -2736,7 +2717,7 @@ void VolumetricMesh::setToSubsetMesh(std::set<int> & subsetElements, int removeI
   {
     if (subsetElements.find(el) == subsetElements.end())
     {
-      free(elements[el]);
+      delete(elements[el]);
       elements[el] = NULL;
       numRemovedElements++;
     }
@@ -2754,7 +2735,6 @@ void VolumetricMesh::setToSubsetMesh(std::set<int> & subsetElements, int removeI
     if (elements[tail] != NULL)
     {
       elements[head] = elements[tail];
-      elementMaterial[head] = elementMaterial[tail];
       lookupTable[tail] = head;  // update to new index 
       head++;
     }
@@ -2762,7 +2742,6 @@ void VolumetricMesh::setToSubsetMesh(std::set<int> & subsetElements, int removeI
   }
   numElements -= numRemovedElements;
   elements = (int**) realloc (elements, sizeof(int*) * numElements);
-  elementMaterial = (int*) realloc (elementMaterial, sizeof(int) * numElements);
 
   for(int setIndex=0; setIndex < numSets; setIndex++)
   {
@@ -2786,26 +2765,35 @@ void VolumetricMesh::setToSubsetMesh(std::set<int> & subsetElements, int removeI
       for(int j=0; j < numElementVertices; j++)
         retainedVertices.insert(getVertexIndex(el,j));
 
+    int numRemovedVertices = 0;
+    for(int v=0; v<numVertices; v++)
+    {
+      if (retainedVertices.find(v) == retainedVertices.end())
+      {
+        delete(vertices[v]);
+        vertices[v] = NULL;
+        numRemovedVertices++;
+      }
+    }
+  
     int head = 0;
     int tail = 0;
   
     int * renamingFunction = (int*) malloc (sizeof(int) * numVertices);
-    Vec3d * newVertices = new Vec3d [retainedVertices.size()];
     if (vertexMap != NULL)
       vertexMap->clear();
     while (tail < numVertices)
     {
-      if (retainedVertices.find(tail) != retainedVertices.end())
+      if (vertices[tail] != NULL)
       {
         renamingFunction[tail] = head;
         if (vertexMap != NULL)
           vertexMap->insert(make_pair(tail, head));
-        newVertices[head] = vertices[tail];
+        vertices[head] = vertices[tail];
         head++;
       }
       tail++;
     }
-    assert(head == int(retainedVertices.size()));
 
     // rename vertices inside the elements
     for(int el=0; el<numElements; el++)
@@ -2813,9 +2801,8 @@ void VolumetricMesh::setToSubsetMesh(std::set<int> & subsetElements, int removeI
         elements[el][j] = renamingFunction[getVertexIndex(el,j)];
    
     free(renamingFunction);
-    numVertices = retainedVertices.size();
-    delete [] vertices;
-    vertices = newVertices;
+    numVertices -= numRemovedVertices;
+    vertices = (Vec3d**) realloc (vertices, sizeof(Vec3d*) * numVertices );
   }
 }
 
@@ -2898,7 +2885,7 @@ int VolumetricMesh::exportToEle(const char * baseFilename, int includeRegions) c
   for(int v=0; v < numVertices; v++)
   {   
     fprintf(fout,"%d ",v+1);
-    const Vec3d & vtx = getVertex(v);
+    Vec3d vtx = *getVertex(v);
     fprintf(fout,"%.15f %.15f %.15f\n", vtx[0], vtx[1], vtx[2]);
   }     
         
@@ -2909,218 +2896,4 @@ int VolumetricMesh::exportToEle(const char * baseFilename, int includeRegions) c
   return 0;
 }
 
-void VolumetricMesh::renumberVertices(const vector<int> & permutation)
-{
-
-  // renumber vertices
-  Vec3d * newVertices = new Vec3d [numVertices];
-  for (int i = 0; i < numVertices; i++)
-    newVertices[permutation[i]] = vertices[i];
-  delete [] vertices;
-  vertices = newVertices;
-
-  // renumber tets
-  for (int i = 0; i < numElements; i++)
-    for (int j = 0; j < numElementVertices; j++)
-      elements[i][j] = permutation[elements[i][j]];
-}
-
-void VolumetricMesh::addMaterial(const Material * material, const Set & newSet, bool removeEmptySets, bool removeEmptyMaterials)
-{
-  // add new material to materials
-  numMaterials++;
-  materials = (Material**) realloc (materials, sizeof(Material*) * numMaterials);
-  materials[numMaterials - 1] = material->clone();
-
-  // remove indices in the sets that belong to the newSet
-  const set<int> & newElements = newSet.getElements();
-  vector<bool> eleCovered(numElements, false);
-  for(int i = 1; i < numSets; i++) // skip the first set, which is always allElements
-  {
-    set<int> & s = sets[i]->getElements();
-
-    for(set<int>::iterator it = s.begin(); it != s.end(); )
-    {
-      int ele = *it;
-      eleCovered[ele] = true;
-      if (newElements.find(ele) != newElements.end())
-      {
-        set<int>::iterator it2 = it;
-        it++;
-        s.erase(it2);
-      }
-      else
-        it++;
-    }
-  }
-
-  // we have to be careful here: if previously the entire mesh is in default set: allElements,
-  // adding a new set will invalidate the elements that are previously in allElements
-  // a newSet is needed to cover those elements
-  set<int> restSet;
-  for(int i = 0; i < numElements; i++)
-    if (eleCovered[i] == false) // this element is covered only by allElements
-      restSet.insert(i);
-  if (restSet.size() > 0)
-    numSets++;
-
-  // add the new Set
-  numSets++;
-  sets = (Set**) realloc(sets, sizeof(Set *) * numSets);
-  sets[numSets-1] = new Set(newSet);
-
-  if (restSet.size() > 0)
-    sets[numSets-2] = new Set("restElements", restSet);
-
-  // create a new Region
-  numRegions++;
-  regions = (Region**) realloc (regions, sizeof(Region*) * numRegions);
-  regions[numRegions - 1] = new Region(numMaterials - 1, numSets - 1);
-
-  if (restSet.size() > 0)
-  {
-    // first find the material that used for allElements
-    for(int i = 0; i < numRegions-1; i++)
-      if (regions[i]->getSetIndex() == 0) // this is the index of the allElements set
-        regions[i]->setSetIndex(numSets-2);
-  }
-
-  // modify elementMaterial
-  for(set<int>::const_iterator it = newElements.begin(); it != newElements.end(); it++)
-  {
-    int el = *it;
-    assert(el >= 0 && el < numElements);
-    elementMaterial[el] = numMaterials-1;
-  }
-
-  if (removeEmptySets)
-  {
-    bool hasEmptySet = false;
-    vector<int> setIndexChange(numSets, 0); // old set index -> new set index
-    int newIndex = 0;                       // store the next available set index
-    for(int i = 0; i < numSets; i++)
-    {
-      if (sets[i]->getNumElements() == 0)
-      {
-        setIndexChange[i] = -1; // this set will be deleted, so its new set index is -1
-        delete sets[i];
-        sets[i] = NULL;
-        hasEmptySet = true;
-      }
-      else
-      {
-        setIndexChange[i] = newIndex; // this set is remained, its new index is the next available index
-        if (newIndex != i)            // this means there's already at least one set deleted
-        {
-          assert(newIndex < i);
-          sets[newIndex] = sets[i];   // assign the pointer to the current set to the location at newIndex
-        }
-        newIndex++;
-      }
-    }
-
-    if (hasEmptySet)
-    {
-      assert(newIndex < numSets);
-      numSets = newIndex;
-      sets = (Set**) realloc(sets, sizeof(Set *) * numSets);
-
-      int newRegionIdx = 0;
-      for(int i = 0; i < numRegions; i++)
-      {
-        int oldSetIdx = regions[i]->getSetIndex();
-        assert((size_t)oldSetIdx < setIndexChange.size());
-        if (setIndexChange[oldSetIdx] == -1) // this set has been deleted
-        {
-          delete regions[i];
-          regions[i] = NULL;
-        }
-        else
-        {
-          regions[i]->setSetIndex(setIndexChange[oldSetIdx]);
-          if (newRegionIdx != i)
-            regions[newRegionIdx] = regions[i];
-          newRegionIdx++;
-        }
-      }
-      numRegions = newRegionIdx;
-      regions = (Region**) realloc (regions, sizeof(Region*) * numRegions);
-    } // end if (hasEmptySet)
-    else
-    {
-      assert(newIndex == numSets);
-    }
-  } // end if (removeEmptySets)
-
-  // remove material
-  if (removeEmptyMaterials)
-  {
-    // count #Elements for each material
-    vector<int> elementsWithMaterial(numMaterials, 0);
-
-    for(int i = 0; i < numElements; i++)
-    {
-      int matIdx = elementMaterial[i];
-      assert(matIdx >= 0 && matIdx < numMaterials);
-      elementsWithMaterial[matIdx]++;
-    }
-
-    int newMatIdx = 0;
-    vector<int> matIndexChange(numMaterials, 0); // old material index -> new material index
-    bool hasEmptyMat = false;
-    for(int i = 0; i < numMaterials; i++)
-    {
-      if (elementsWithMaterial[i] == 0)
-      {
-        matIndexChange[i] = -1;
-        delete materials[i];
-        materials[i] = NULL;
-        hasEmptyMat = true;
-      }
-      else
-      {
-        matIndexChange[i] = newMatIdx;
-        if (newMatIdx != i)
-          materials[newMatIdx] = materials[i];
-        newMatIdx++;
-      }
-    }
-
-    if (hasEmptyMat)
-    {
-      numMaterials = newMatIdx;
-      materials = (Material**) realloc (materials, sizeof(Material*) * numMaterials);
-
-      // we also need to modify and delete invalid regions
-      bool hasInvalidRegion = false;
-      int newRegionIdx = 0;
-      for(int i = 0; i < numRegions; i++)
-      {
-        int oldMatIndex = regions[i]->getMaterialIndex();
-        if (matIndexChange[oldMatIndex] < 0)
-        {
-          hasInvalidRegion = true;
-          delete regions[i];
-          regions[i] = NULL;
-        }
-        else
-        {
-          regions[i]->setMaterialIndex(matIndexChange[oldMatIndex]);
-          if (newRegionIdx != i)
-            regions[newRegionIdx] = regions[i];
-          newRegionIdx++;
-        }
-      }
-
-      if (hasInvalidRegion)
-      {
-        numRegions = newRegionIdx;
-        regions = (Region**) realloc (regions, sizeof(Region*) * numRegions);
-      }
-
-      // reassign the correct material index to each element
-      propagateRegionsToElements();
-    }
-  } // end if (removeEmptyMaterials)
-}
 

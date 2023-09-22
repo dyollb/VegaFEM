@@ -5,8 +5,8 @@ ifndef CLEANFOLDER
 CLEANFOLDER=INTEGRATORDENSE
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # NOTE: unlike the other library makefiles, this makefile adds $(PARDISO_INCLUDE) to the compiler invocation
 
@@ -17,7 +17,7 @@ INTEGRATORDENSE_OBJECTS=implicitNewmarkDenseMulti1D.o integratorMulti1D.o centra
 INTEGRATORDENSE_LIBS=matrix integrator performanceCounter reducedForceModel
 
 # the headers in this library
-INTEGRATORDENSE_HEADERS=implicitNewmarkDenseMulti1D.h integratorMulti1D.h centralDifferencesDense.h implicitBackwardEulerDense.h implicitNewmarkDense.h integratorBaseDense.h IPIVC.h
+INTEGRATORDENSE_HEADERS=implicitNewmarkDenseMulti1D.h integratorMulti1D.h centralDifferencesDense.h implicitBackwardEulerDense.h implicitNewmarkDense.h integratorBaseDense.h
 
 INTEGRATORDENSE_OBJECTS_FILENAMES=$(addprefix $(L)/integratorDense/, $(INTEGRATORDENSE_OBJECTS))
 INTEGRATORDENSE_HEADER_FILENAMES=$(addprefix $(L)/integratorDense/, $(INTEGRATORDENSE_HEADERS))

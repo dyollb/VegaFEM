@@ -1,24 +1,20 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "renderVolumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT,    *
- *                                                          2018 USC     *
+ *                                                          2015 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -35,6 +31,7 @@
 #define _RENDER_VOLUMETRIC_MESH_
 
 #include <set>
+#include "printBitmap.h"
 #include "volumetricMesh.h"
 
 class RenderVolumetricMesh
@@ -45,8 +42,6 @@ public:
   void Render(VolumetricMesh * volumetricMesh, int wireframe=0, double * u = NULL);
   void RenderWireframe(VolumetricMesh * volumetricMesh);
   void RenderSolidAndWireframe(VolumetricMesh * volumetricMesh);
-
-  void RenderElement(VolumetricMesh * volumetricMesh, int el, int wireframe=0);
 
   void RenderVertices(VolumetricMesh * volumetricMesh);
   void RenderVertices(VolumetricMesh * volumetricMesh, int * vertices, int numVertices, bool oneIndexed=true);
@@ -68,6 +63,9 @@ public:
   void SetFlatRenderingMode(); // all colored white
   void SetGradedRenderingMode(VolumetricMesh * volumetricMesh); // colored graded, according to numerical values of E, nu, density
   void SetDiscreteRenderingMode(); // different material groups colored with distinct colors (default)
+
+  static void UnitCube();
+  static void UnitCubeWireframe();
 
 protected:
   double maxE;
@@ -115,6 +113,7 @@ protected:
   void RenderCube(VolumetricMesh * volumetricMesh, int el, int wireframe=0);
   void RenderTet(VolumetricMesh * volumetricMesh, int el, int wireframe=0);
 
+  void JetColorMap(double x, double color[3]);
   void DetermineMaxMin(VolumetricMesh * volumetricMesh);
 };
 

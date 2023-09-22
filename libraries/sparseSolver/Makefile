@@ -5,25 +5,23 @@ ifndef CLEANFOLDER
 CLEANFOLDER=SPARSESOLVER
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
-SPARSESOLVER_OBJECTS=linearSolver.o PardisoSolver.o SPOOLESSolver.o SPOOLESSolverMT.o CGSolver.o LagrangeMultiplierSolver.o
+SPARSESOLVER_OBJECTS=linearSolver.o PardisoSolver.o SPOOLESSolver.o SPOOLESSolverMT.o CGSolver.o
 ifneq ($(ARPACK_LIB),)
-SPARSESOLVER_OBJECTS+=ARPACKSolver.o invMKSolver.o ZTAZMultiplicator.o invZTAZSolver.o invZTAZMSolver.o
+SPARSESOLVER_OBJECTS+=ARPACKSolver.o invMKSolver.o
 endif
 
 # the libraries this library depends on
-SPARSESOLVER_LIBS=sparseMatrix constrainedDOFs performanceCounter
-ifneq ($(ARPACK_LIB),)
-SPARSESOLVER_LIBS+=matrix
-endif
+SPARSESOLVER_LIBS=sparseMatrix
 
 # the headers in this library
-SPARSESOLVER_HEADERS=linearSolver.h PardisoSolver.h SPOOLESSolver.h SPOOLESSolverMT.h CGSolver.h sparseSolverAvailability.h sparseSolvers.h LagrangeMultiplierSolver.h
+SPARSESOLVER_HEADERS=linearSolver.h PardisoSolver.h SPOOLESSolver.h SPOOLESSolverMT.h CGSolver.h sparseSolverAvailability.h sparseSolvers.h
 ifneq ($(ARPACK_LIB),)
-SPARSESOLVER_HEADERS+=ARPACKSolver.h invMKSolver.h ZTAZMultiplicator.h invZTAZSolver.h invZTAZMSolver.h
+SPARSESOLVER_HEADERS+=ARPACKSolver.h invMKSolver.h
 endif
 
 SPARSESOLVER_OBJECTS_FILENAMES=$(addprefix $(L)/sparseSolver/, $(SPARSESOLVER_OBJECTS))

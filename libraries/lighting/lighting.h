@@ -71,106 +71,70 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-class ConfigFile;
+#include "macros.h"
 
 class Lighting
 {
 public:
 
-  Lighting();
   // read OpenGL lighting parameters from a configuration file
   Lighting(const char * configFilename);
-  virtual ~Lighting() {}
 
   // call this inside your OpenGL display routine, after setting up the modelview and projection matrices
-  void LightScene() const; 
+  void LightScene(); 
 
-  inline void GetLightPosition(int lightID, float pos[4]) const;
-  inline void GetLightAmbientTerm(int lightID, float Ka[4]) const;
-  inline void GetLightDiffuseTerm(int lightID, float Kd[4]) const;
-  inline void GetLightSpecularTerm(int lightID, float Ks[4]) const;
-  inline float GetLightIntensity(int lightID) const;
-  inline float GetAmbientIntensity() const;
-  inline bool IsLightEnabled(int lightID) const;
-  inline bool IsAmbientEnabled() const { return enableAmbientTerm; }
-  inline bool IsDiffuseEnabled() const { return enableDiffuseTerm; }
-  inline bool IsSpecularEnabled() const { return enableSpecularTerm; }
-
-  // pos is a 4-float array representing generalized coord. of the light source
-  void SetLightPosition(int lightID, const float pos[4]);
-  void SetLightEnabled(int lightID, bool e);
-  void SetLightIntensity(int lightID, float intensity);
-  void SetAmbientEnabled(bool e);
-  void SetDiffuseEnabled(bool e);
-  void SetSpecularEnabled(bool e);
-
-  // set a light box. Move all lights to the vertices of the box
-  // l0: (bmin[0], bmin[1], bmin[2])
-  // l1: (bmax[0], bmin[1], bmin[2])
-  // l2: (bmin[0], bmax[1], bmin[2])
-  // l3: (bmax[0], bmax[1], bmin[2])
-  // l4: (bmin[0], bmin[1], bmax[2])
-  // l5: (bmax[0], bmin[1], bmax[2])
-  // l6: (bmin[0], bmax[1], bmax[2])
-  // l7: (bmax[0], bmax[1], bmax[2])
-  void SetLightBox(const double boxMin[3], const double boxMax[3]);
-  void SetLightBox(const float boxMin[3], const float boxMax[3]);
-  bool HasLightEnabled() const;  // return whether at least one light is enabled
-  bool HasLightDisabled() const; // return wheter at least one light is disabled
-  void SetAllLightsEnabled(bool e);
-  void SetAllLightsIntensity(float intensity);
-
-  // toggle light[lightID], return whether the toggled light is enabled
-  bool ToggleLight(int lightID);
-
-  // save lighting config to file
-  int SaveConfig(const char * filename);
+  inline void GetLightPosition(int lightID, float * pos);
+  inline void GetLightAmbientTerm(int lightID, float * Ka);
+  inline void GetLightDiffuseTerm(int lightID, float * Kd);
+  inline void GetLightSpecularTerm(int lightID, float * Ks);
+  inline float GetLightIntensity(int lightID);
+  inline float GetAmbientIntensity();
+  inline bool IsLightEnabled(int lightID);
+  inline bool IsAmbientEnabled() { return enableAmbientTerm; }
+  inline bool IsDiffuseEnabled() { return enableDiffuseTerm; }
+  inline bool IsSpecularEnabled() { return enableSpecularTerm; }
 
 protected:
-  void buildConfig(ConfigFile & );
-  void initialize();
-
-  float ambientIntensity = 0.0f;
-  bool localViewer = true, twoSidedLighting = false;
+  float ambientIntensity;
+  bool localViewer, twoSidedLighting;
   bool lightEnabled[8];
   float lightPosition[32];
   float lKa[32], lKd[32], lKs[32];
   float lightIntensity[8];
-  bool enableAmbientTerm = true, enableDiffuseTerm = true, enableSpecularTerm = true;
+  bool enableAmbientTerm, enableDiffuseTerm, enableSpecularTerm;
 };
 
-inline float Lighting::GetLightIntensity(int lightID) const
+inline float Lighting::GetLightIntensity(int lightID)
 {
   return lightIntensity[lightID];
 }
 
-inline void Lighting::GetLightPosition(int lightID, float pos[4]) const
+inline void Lighting::GetLightPosition(int lightID, float * pos)
 {
-  memcpy(pos, &(lightPosition[4*lightID]), 4 * sizeof(float));
+  memcpy(pos, &(lightPosition[4*lightID]), 4* sizeof(float));
 }
 
-inline void Lighting::GetLightAmbientTerm(int lightID, float Ka[4]) const
+inline void Lighting::GetLightAmbientTerm(int lightID, float * Ka)
 {
   memcpy(Ka, &(lKa[4*lightID]), 4* sizeof(float));
 }
 
-inline void Lighting::GetLightDiffuseTerm(int lightID, float Kd[4]) const
+inline void Lighting::GetLightDiffuseTerm(int lightID, float * Kd)
 {
   memcpy(Kd, &(lKd[4*lightID]), 4* sizeof(float));
 }
 
-inline void Lighting::GetLightSpecularTerm(int lightID, float Ks[4]) const
+inline void Lighting::GetLightSpecularTerm(int lightID, float * Ks)
 {
   memcpy(Ks, &(lKs[4*lightID]), 4* sizeof(float));
 }
 
-inline float Lighting::GetAmbientIntensity() const
+inline float Lighting::GetAmbientIntensity()
 {
   return ambientIntensity;
 }
 
-inline bool Lighting::IsLightEnabled(int lightID) const
+inline bool Lighting::IsLightEnabled(int lightID)
 {
   return lightEnabled[lightID];
 }

@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC           *
+ * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC           *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -137,7 +133,7 @@ StVKStiffnessMatrix::~StVKStiffnessMatrix()
 }
 
 // the master function
-void StVKStiffnessMatrix::ComputeStiffnessMatrix(const double * vertexDisplacements, SparseMatrix * sparseMatrix)
+void StVKStiffnessMatrix::ComputeStiffnessMatrix(double * vertexDisplacements, SparseMatrix * sparseMatrix)
 {
   //PerformanceCounter stiffnessCounter;
   sparseMatrix->ResetToZero();
@@ -150,7 +146,7 @@ void StVKStiffnessMatrix::ComputeStiffnessMatrix(const double * vertexDisplaceme
   //printf("Stiffness matrix: %G\n", stiffnessCounter.GetElapsedTime());
 }
 
-void StVKStiffnessMatrix::AddLinearTermsContribution(const double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
+void StVKStiffnessMatrix::AddLinearTermsContribution(double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -198,7 +194,7 @@ void StVKStiffnessMatrix::AddLinearTermsContribution(const double * vertexDispla
       dataHandle[rowc+k][3*column[c8+(where)]+l] += matrix[3*k+l];\
     }
 
-void StVKStiffnessMatrix::AddQuadraticTermsContribution(const double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
+void StVKStiffnessMatrix::AddQuadraticTermsContribution(double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -274,7 +270,7 @@ void StVKStiffnessMatrix::AddQuadraticTermsContribution(const double * vertexDis
   precomputedIntegrals->ReleaseElementIterator(elIter);
 }
 
-void StVKStiffnessMatrix::AddCubicTermsContribution(const double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
+void StVKStiffnessMatrix::AddCubicTermsContribution(double * vertexDisplacements, SparseMatrix * sparseMatrix, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -312,12 +308,12 @@ void StVKStiffnessMatrix::AddCubicTermsContribution(const double * vertexDisplac
         for(int a=0; a<numElementVertices; a++)
         {
           int va = vertices[a];
-          const double * qa = &(vertexDisplacements[3*va]);
+          double * qa = &(vertexDisplacements[3*va]);
           for(int b=0; b<numElementVertices; b++)
           {
             int vb = vertices[b];
 
-            const double * qb = &(vertexDisplacements[3*vb]);
+            double * qb = &(vertexDisplacements[3*vb]);
 
             double D0 = lambda * precomputedIntegrals->D(elIter,a,c,b,e) +
                         mu * ( precomputedIntegrals->D(elIter,a,e,b,c) + precomputedIntegrals->D(elIter,a,b,c,e) );

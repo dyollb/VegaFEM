@@ -5,8 +5,8 @@ ifndef CLEANFOLDER
 CLEANFOLDER=INTEGRATORSPARSE
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # NOTE: unlike the other library makefiles, this makefile adds $(PARDISO_INCLUDE) to the compiler invocation
 
@@ -14,7 +14,7 @@ include $(R)/Makefile-headers/Makefile-header
 INTEGRATORSPARSEOBJECTS=centralDifferencesSparse.o eulerSparse.o implicitBackwardEulerSparse.o implicitNewmarkSparse.o integratorBaseSparse.o
 
 # the libraries this library depends on
-INTEGRATORSPARSELIBS=integrator performanceCounter constrainedDOFs sparseSolver forceModel
+INTEGRATORSPARSELIBS=integrator performanceCounter insertRows sparseSolver forceModel
 
 # the headers in this library
 INTEGRATORSPARSEHEADERS=centralDifferencesSparse.h eulerSparse.h implicitBackwardEulerSparse.h implicitNewmarkSparse.h integratorBaseSparse.h

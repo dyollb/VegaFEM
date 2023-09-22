@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
+ * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Christopher Twigg, Daniel Schroeder      *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -33,7 +29,7 @@
 #ifndef _OCTREE_H_
 #define _OCTREE_H_
 
-//  An octree storing triangles. Can be intersected with a sphere or a line segment.
+//  An octree storing triangles. Can be intersected with a sphere or a line segment. 
 //  Jernej Barbic, CMU
 
 #include <vector>
@@ -42,8 +38,8 @@
 #include "triangle.h"
 #include "simpleSphere.h"
 
-template<class TriangleClass>
-class Octree
+template<class TriangleClass> 
+class Octree 
 {
 public:
   // make empty octree
@@ -61,7 +57,7 @@ public:
 
   // note: these two routines might return the same colliding triangle several times; call <TriangleClass>::makeUniqueList to make the list unique if needed
   void buildCollisionList(std::vector<TriangleClass*> & triangleList, const SimpleSphere & simpleSphere);
-  void buildCollisionList(std::vector<TriangleClass*> & triangleList, const Vec3d & segmentStartPoint, const Vec3d & segmentEndPoint, std::vector<Vec3d> * intersectionList = NULL);
+  void buildCollisionList(std::vector<TriangleClass*> & triangleList, Vec3d segmentStartPoint, Vec3d segmentEndPoint);
 
   void render(); // openGL rendering
   void render(int level); // only render leaf boxes at depth level 'level'
@@ -69,12 +65,7 @@ public:
   void setRenderInfo(int info) { printRenderInfo = info; }
 
   int getDepth(); // compute tree depth
-  const BoundingBox & getBoundingBox() const { return boundingBox; }
-
-  inline Octree * getChildHandle(const int i) const { return childrenNodes[i]; }
-  inline bool isLeaf() const;
-
-  inline void removeChild(const int i);
+  BoundingBox getBoundingBox() { return boundingBox; }
 
 protected:
 

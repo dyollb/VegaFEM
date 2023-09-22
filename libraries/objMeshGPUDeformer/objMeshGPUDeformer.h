@@ -1,24 +1,20 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "objMeshGPUDeformer" library , Copyright (C) 2007 CMU, 2009 MIT,      *
- *                                                        2018 USC       *
+ *                                                        2015 USC       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -42,7 +38,7 @@
 
 #include "openGL-headers.h"
 
-#if defined(_WIN32) || defined(linux) || defined(__linux__)
+#if defined(_WIN32) || defined(linux)
   #include <GL/glext.h>
 #elif defined(__APPLE__)
   #include <OpenGL/glext.h>
@@ -88,7 +84,6 @@ protected:
   int numGroups;
   int numTriangles;
   int * numGroupTriangles;
-  std::vector<int> numGroupEdges;
 
   int renderingMode;
   int displayListStart;

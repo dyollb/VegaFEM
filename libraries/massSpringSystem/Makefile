@@ -5,17 +5,18 @@ ifndef CLEANFOLDER
 CLEANFOLDER=MASSSPRINGSYSTEM
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
-MASSSPRINGSYSTEM_OBJECTS=massSpringSystemFromObjMeshConfigFile.o massSpringSystemFromObjMesh.o massSpringSystemFromTetMeshConfigFile.o massSpringSystemFromTetMesh.o massSpringSystem.o renderSprings.o massSpringSystemFromCubicMesh.o massSpringSystemFromCubicMeshConfigFile.o
+MASSSPRINGSYSTEM_OBJECTS=massSpringSystemFromObjMeshConfigFile.o massSpringSystemFromObjMesh.o massSpringSystemFromTetMeshConfigFile.o massSpringSystemFromTetMesh.o massSpringSystemMT.o massSpringSystem.o renderSprings.o massSpringSystemFromCubicMesh.o massSpringSystemFromCubicMeshConfigFile.o
 
 # the libraries this library depends on
 MASSSPRINGSYSTEM_LIBS=objMesh volumetricMesh configFile sparseMatrix
 
 # the headers in this library
-MASSSPRINGSYSTEM_HEADERS=massSpringSystemFromObjMeshConfigFile.h massSpringSystemFromObjMesh.h massSpringSystemFromTetMeshConfigFile.h massSpringSystemFromTetMesh.h massSpringSystem.h renderSprings.h massSpringSystemFromCubicMesh.h massSpringSystemFromCubicMeshConfigFile.h
+MASSSPRINGSYSTEM_HEADERS=massSpringSystemFromObjMeshConfigFile.h massSpringSystemFromObjMesh.h massSpringSystemFromTetMeshConfigFile.h massSpringSystemFromTetMesh.h massSpringSystem.h massSpringSystemMT.h renderSprings.h massSpringSystemFromCubicMesh.h massSpringSystemFromCubicMeshConfigFile.h
 
 MASSSPRINGSYSTEM_OBJECTS_FILENAMES=$(addprefix $(L)/massSpringSystem/, $(MASSSPRINGSYSTEM_OBJECTS))
 MASSSPRINGSYSTEM_HEADER_FILENAMES=$(addprefix $(L)/massSpringSystem/, $(MASSSPRINGSYSTEM_HEADERS))

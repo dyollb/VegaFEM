@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=OPENGLHELPER
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-OPENGLHELPER_OBJECTS=openGLHelper.o printBitmap.o saveScreenShot.o handleRender.o inputDevice.o
+OPENGLHELPER_OBJECTS=openGLHelper.o printBitmap.o saveScreenShot.o
 
 # the libraries this library depends on
-OPENGLHELPER_LIBS=imageIO minivector performanceCounter
+OPENGLHELPER_LIBS=matrixIO imageIO
 
 # the headers in this library
-OPENGLHELPER_HEADERS=openGLHelper.h printBitmap.h saveScreenShot.h handleRender.h fog.h
+OPENGLHELPER_HEADERS=openGLHelper.h printBitmap.h saveScreenShot.h
 
 OPENGLHELPER_OBJECTS_FILENAMES=$(addprefix $(L)/openGLHelper/, $(OPENGLHELPER_OBJECTS))
 OPENGLHELPER_HEADER_FILENAMES=$(addprefix $(L)/openGLHelper/, $(OPENGLHELPER_HEADERS))

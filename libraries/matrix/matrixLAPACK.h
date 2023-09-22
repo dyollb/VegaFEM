@@ -1,23 +1,14 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
- *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
- *           Doug L. James, Jovan Popovic                                *
- *                                                                       *
- * Funding: National Science Foundation, Link Foundation,                *
- *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ * http://www.jernejbarbic.com/code                                      *
+ * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
+ * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -41,16 +32,16 @@
 #include <stdlib.h>
 
 template<class real>
-real * InverseMatrix(int m, const real * mtx, real * output = NULL);
+real * InverseMatrix(int m, real * mtx, real * output = NULL);
 
 template<class real>
-real * PseudoInverseMatrix(int m, int n, const real * mtx, real singularValueThreshold = 1e-6, int * rank = NULL, real * output = NULL);
+real * PseudoInverseMatrix(int m, int n, real * mtx, real singularValueThreshold = 1e-6, int * rank = NULL, real * output = NULL);
 
 template<class real>
-real * MatrixLeastSquareSolve(int m, int n, int nRhs, const real * mtx, const real * b, real rcond, int * rank = NULL, real * output = NULL);
+real * MatrixLeastSquareSolve(int m, int n, int nRhs, real * mtx, real * b, real rcond, int * rank = NULL, real * output = NULL);
 
 template<class real>
-void MatrixLUSolve(int n, int nRhs, const real * mtx, real * x, const real * b);
+void MatrixLUSolve(int n, int nRhs, real * mtx, real * x, real * b);
 
 // mtx * x = lambda * x
 template<class real>

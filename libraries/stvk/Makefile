@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=STVK
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-STVK_OBJECTS=StVKCubeABCD.o StVKElementABCD.o StVKElementABCDLoader.o StVKHessianTensor.o StVKInternalForces.o StVKStiffnessMatrix.o StVKTetABCD.o StVKTetHighMemoryABCD.o StVKFEM.o
+STVK_OBJECTS=StVKCubeABCD.o StVKElementABCD.o StVKElementABCDLoader.o StVKHessianTensor.o StVKInternalForces.o StVKInternalForcesMT.o StVKStiffnessMatrix.o StVKStiffnessMatrixMT.o StVKTetABCD.o StVKTetHighMemoryABCD.o 
 
 # the libraries this library depends on
 STVK_LIBS=minivector volumetricMesh sparseMatrix
 
 # the headers in this library
-STVK_HEADERS=StVKCubeABCD.h StVKElementABCD.h StVKElementABCDLoader.h StVKHessianTensor.h StVKInternalForces.h StVKStiffnessMatrix.h StVKTetABCD.h StVKTetHighMemoryABCD.h StVKFEM.h
+STVK_HEADERS=StVKCubeABCD.h StVKElementABCD.h StVKElementABCDLoader.h StVKHessianTensor.h StVKInternalForces.h StVKInternalForcesMT.h StVKStiffnessMatrix.h StVKStiffnessMatrixMT.h StVKTetABCD.h StVKTetHighMemoryABCD.h
 
 STVK_OBJECTS_FILENAMES=$(addprefix $(L)/stvk/, $(STVK_OBJECTS))
 STVK_HEADER_FILENAMES=$(addprefix $(L)/stvk/, $(STVK_HEADERS))

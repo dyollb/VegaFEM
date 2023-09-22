@@ -5,17 +5,19 @@ ifndef CLEANFOLDER
 CLEANFOLDER=CONFIGFILE
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
+
 
 # the object files to be compiled for this library
 CONFIGFILE_OBJECTS=configFile.o
 
 # the libraries this library depends on
-CONFIGFILE_LIBS=minivector
+CONFIGFILE_LIBS=
 
 # the headers in this library
 CONFIGFILE_HEADERS=configFile.h
+
 
 CONFIGFILE_OBJECTS_FILENAMES=$(addprefix $(L)/configFile/, $(CONFIGFILE_OBJECTS))
 CONFIGFILE_HEADER_FILENAMES=$(addprefix $(L)/configFile/, $(CONFIGFILE_HEADERS))

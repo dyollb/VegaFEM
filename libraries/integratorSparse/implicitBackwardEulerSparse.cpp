@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
+ * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -30,15 +26,20 @@
  *                                                                       *
  *************************************************************************/
 
+/*
+  Jernej Barbic
+  A class to timestep large sparse dynamics using implicit backward Euler.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "matrixIO.h"
 #include "performanceCounter.h"
-#include "constrainedDOFs.h"
+#include "insertRows.h"
 #include "implicitBackwardEulerSparse.h"
 
-ImplicitBackwardEulerSparse::ImplicitBackwardEulerSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, int numSolverThreads_): ImplicitNewmarkSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef, maxIterations, epsilon, 0.25, 0.5, numSolverThreads_)
+ImplicitBackwardEulerSparse::ImplicitBackwardEulerSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int positiveDefiniteSolver_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, int numSolverThreads_): ImplicitNewmarkSparse(r, timestep, massMatrix_, forceModel_, positiveDefiniteSolver_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef, maxIterations, epsilon, 0.25, 0.5, numSolverThreads_)
 {
 }
 
@@ -185,7 +186,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     //tangentStiffnessMatrix->Save("Keff");
 
     // remove rows corresponding to fixed vertices from qdelta, and store the result in bufferConstrained
-    ConstrainedDOFs::RemoveDOFs(r, bufferConstrained, qdelta, numConstrainedDOFs, constrainedDOFs);
+    RemoveRows(r, bufferConstrained, qdelta, numConstrainedDOFs, constrainedDOFs);
 
     double error = 0.0;
     for(int i=0; i<r - numConstrainedDOFs; i++)
@@ -233,7 +234,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     #endif
 
     #ifdef PARDISO
-      int info = pardisoSolver->FactorMatrix(systemMatrix);
+      int info = pardisoSolver->ComputeCholeskyDecomposition(systemMatrix);
       if (info == 0)
         info = pardisoSolver->SolveLinearSystem(buffer, bufferConstrained);
       char solverString[16] = "PARDISO";
@@ -249,13 +250,14 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     if (info != 0)
     {
       printf("Error: %s sparse solver returned non-zero exit status %d.\n", solverString, (int)info);
+      exit(-1);
       return 1;
     }
 
     counterSystemSolveTime.StopCounter();
     systemSolveTime = counterSystemSolveTime.GetElapsedTime();
 
-    ConstrainedDOFs::InsertDOFs(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
+    InsertRows(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
 
 /*
     printf("qdelta:\n");

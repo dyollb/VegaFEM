@@ -1,23 +1,14 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
- *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
- *           Doug L. James, Jovan Popovic                                *
- *                                                                       *
- * Funding: National Science Foundation, Link Foundation,                *
- *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ * http://www.jernejbarbic.com/code                                      *
+ * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
+ * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -61,10 +52,11 @@
 #include "matrixMacros.h"
 #include "matrixBLAS.h"
 #include "matrixLAPACK.h"
-#include "vega-config.h"
 
+// uncomment the following to use the MExpv and MExp routines:
+//#define USE_EXPOKIT
 
-#ifdef VEGA_USE_EXPOKIT
+#ifdef USE_EXPOKIT
   #include "matrixExp.h"
 #endif
 
@@ -84,7 +76,7 @@ public:
   Matrix (int m, int n, bool freeDataInDestructor = true);
   // create a m x n matrix of constant entries
   Matrix (int m, int n, real constEntry, bool freeDataInDestructor = true);
-  // create a m x m diagonal matrix with all the diagonal entries equaling "diagonal"
+  // create a m x m diagonal matrix with all the diagonal entries equalling "diagonal"
   Matrix (int m, real diagonal, bool freeDataInDestructor = true);
   // create a m x m diagonal matrix with the diagonal entries specified by the array diagonal (of length m)
   Matrix (int m, const real * diagonal, bool freeDataInDestructor = true);
@@ -95,12 +87,7 @@ public:
 
   inline int Getm() const { return m; }
   inline int Getn() const { return n; }
-  inline real * GetData() { return data; }
-  inline const real * GetData() const { return data; }
-  inline const real & At(int row, int column) const { return data[ELT(m,row,column)]; }
-  inline real & At(int row, int column) { return data[ELT(m,row,column)]; }
-  inline const real * GetColumn(int col) const { return data + col * m; }
-  inline real * GetColumn(int col) { return data + col * m; }
+  inline real * GetData() const { return data; }
 
   const Matrix operator+ (const Matrix & mtx2) const;
   const Matrix operator- (const Matrix & mtx2) const;
@@ -110,10 +97,8 @@ public:
   Matrix & operator-= (const Matrix & mtx2);
   Matrix & operator*= (const Matrix & mtx2);
   Matrix & operator*= (const real alpha);
-  inline const real & operator() (int row, int column) const { return this->At(row, column); }
-  inline real & operator() (int row, int column) { return this->At(row, column); }
-  bool operator == (const Matrix & mtx2) const;
-  bool operator != (const Matrix & mtx2) const;
+  inline const real & operator() (int row, int columns) const;
+  inline real & operator() (int row, int columns);
 
   // output = trans(this) * mtx2
   const Matrix MultiplyT (const Matrix & mtx2) const;
@@ -123,10 +108,6 @@ public:
 
   // sets the submatrix, defined by its upper-left corner at (i,j) and the dimensions of "submatrix", to entries from the matrix "submatrix"
   void SetSubmatrix(int i, int j, const Matrix<real> & submatrix);
-  // gets the submatrix, defined by its upper-left corner at (i,j) and the dimensions of "submatrix", to entries from the matrix "submatrix"
-  void GetSubmatrix(int i, int j, Matrix<real> & submatrix) const;
-
-  // === matrix resize routines ===
 
   void RemoveRows(int rowStart, int rowEnd);
   void RemoveColumns(int columnStart, int columnEnd);
@@ -134,21 +115,11 @@ public:
   void AppendRows(const Matrix<real> & rows);
   void AppendColumns(const Matrix<real> & columns);
   void AppendRowsColumns(const Matrix<real> & bottomLeftBlock, const Matrix<real> & topRightBlock, const Matrix<real> & bottomRightBlock);
-  void AppendRowsColumns(int numAddedRows, int numAddedCols);
-
-  // resize the matrix and destroy the stored data
-  void Resize(int newRows, int newCols);
-  // resize the matrix and retain the data in the matrix defined by its upper-left corner at (rowIdx, colIdx) = (i,j)
-  // and dimension of size (newRows, newCols). Fill in zero if necessary
-  void Resize(int i, int j, int newRows, int newCols);
-
 
   real MaxAbsEntry() const;
-  real GetFrobeniusNorm() const;  // matrix Frobenius norm: sqrt of the sum of squares of its elements
 
   void Print(int numDigits=-1) const; // if numDigits=-1: use %G flag
   int Save(const char * filename) const; // returns 0 on success, 1 on failure
-  int Load(const char * filename); // returns 0 on success, 1 on failure
 
   // factor <this matrix> = Q * Lambda * Q^T
   // matrix must be symmetric (no checks performed)
@@ -170,7 +141,7 @@ public:
 
   // solves linear system (via LU):
   // (this matrix) * x = rhs
-  int LUSolve(Matrix<real> & x, const Matrix<real> & rhs);
+  int LUSolve(const Matrix<real> & x, const Matrix<real> & rhs);
 
   // scalar-matrix multiplication
   // example: A = 0.37 * B;
@@ -180,9 +151,75 @@ public:
     return Matrix<real>(mtx2.Getm(),mtx2.Getn(),output,false);
   }
 
+  // compute the Frobenius inner product of two matrices (sum of products of all pairwise entries)
+  // example: double product = FrobeniusInnerProduct(A, B);
+  inline friend real FrobeniusInnerProduct(const Matrix<real> & mtx1, const Matrix<real> & mtx2)
+  {
+    if ((mtx1.Getm() != mtx2.Getm()) || (mtx1.Getn() != mtx2.Getn()))
+    {    
+      printf("Matrix size mismatch in Matrix::FrobeniusInnerProduct.\n");
+      throw 10;
+    }
+    real product = 0.0;
+    int mn = mtx1.Getm() * mtx1.Getn();
+    for(int i=0; i<mn; i++)
+      product += mtx1.data[i] * mtx2.data[i];
+    return product;
+  }
+  
+  // transpose the matrix
+  // example: A = Transpose(B);
+  inline friend const Matrix<real> Transpose(const Matrix<real> & mtx2)
+  {
+    real * buffer = (real*) malloc (sizeof(real) * mtx2.Getm() * mtx2.Getn());
+    memcpy(buffer, mtx2.GetData(), sizeof(real) * mtx2.Getm() * mtx2.Getn());
+    InPlaceTransposeMatrix(mtx2.Getm(), mtx2.Getn(), buffer);
+    return Matrix<real>(mtx2.Getn(), mtx2.Getm(), buffer, false);
+  }
+
+  // compute matrix inverse
+  // example: A = Inverse(B);
+  inline friend const Matrix<real> Inverse(const Matrix<real> & mtx2)
+  {
+    if (mtx2.Getm() != mtx2.Getn())
+    {    
+      printf("Matrix size mismatch in Matrix::Inverse . mtx2.m = %d, mtx2.n = %d\n",      mtx2.Getm(), mtx2.Getn());
+      throw 11;
+    }
+    real * buffer = InverseMatrix(mtx2.Getm(), mtx2.GetData());
+    return Matrix<real>(mtx2.Getm(), mtx2.Getm(), buffer, false);
+  }
+
+  // compute matrix pseudoinverse
+  // example: A = PseudoInverse(B);
+  inline friend const Matrix<real> PseudoInverse(const Matrix<real> & mtx2, real singularValueThreshold, int * rank)
+  {
+    real * buffer = PseudoInverseMatrix(mtx2.Getm(), mtx2.Getn(),
+      mtx2.GetData(), singularValueThreshold, rank);
+    return Matrix<real>(mtx2.Getn(), mtx2.Getm(), buffer, false);
+  }
+
+  // solve the least square system: mtx * output = rhs
+  // rcond is the condition number beyond which matrix singular values are considered singular (see also LAPACK)
+  // rank is a pointer to a single integer, giving the non-singular rank of the matrix, based on rcond
+  // example:  A * X = B
+  // int rank;
+  // X = LeastSquareSolve(A, B, 1e-12, &rank);
+  inline friend const Matrix<real> LeastSquareSolve(const Matrix<real> & mtx, const Matrix<real> & rhs, real rcond, int * rank)
+  {
+    if (mtx.Getm() != rhs.Getm())
+    {    
+      printf("Matrix size mismatch in Matrix::LeastSquareSolve . mtx.m = %d, rhs.m = %d\n", mtx.Getm(), rhs.Getm());
+      throw 12;
+    }
+    real * buffer = MatrixLeastSquareSolve(mtx.Getm(), mtx.Getn(), rhs.Getn(), 
+      mtx.GetData(), rhs.GetData(), rcond, rank);
+    return Matrix<real>(mtx.Getn(), rhs.Getn(), buffer, false);
+  }  
+
   // === matrix exponential routines ===
 
-  // In order to use these routines, you must enable the VEGA_USE_EXPOKIT definition in the header of matrix.h (disabled by default to avoid linker problems when expokit is not used), and link your code against the expokit library:
+  // In order to use these routines, you must enable the USE_EXPOKIT definition in the header of matrix.h (disabled by default to avoid linker problems when expokit is not used), and link your code against the expokit library:
   // http://www.maths.uq.edu.au/expokit/
   // The expokit routines compute the matrix exponential of a general matrix in
   // full, using the irreducible rational Pade approximation to the 
@@ -195,126 +232,44 @@ public:
   // note: this routine uses the same algorithm as MExp below: it explicitly constructs exp((this matrix)*t), and then multiplies by v
   void MExpv(real t, const Matrix<real> & v, Matrix<real> & w);
 
+  // computes A = exp(t*mtx), where A and mtx are square matrices, and t is a scalar
+  // code is a pointer to an integer where the xgpasm expokit routine exit code will be stored (you can pass NULL to discard this code); normal termination is code 0
+  inline friend const Matrix<real> MExp(real t, const Matrix<real> & mtx, int * code = NULL)
+  {
+    #ifdef USE_EXPOKIT
+      if (mtx.Getm() != mtx.Getn())
+      {    
+        printf("Matrix size mismatch in Matrix::MExp . mtx.m = %d, mtx.n = %d\n", mtx.Getm(), mtx.Getn());
+        throw 13;
+      }
+
+      real * buffer = (real*) malloc (sizeof(real) * mtx.Getm() * mtx.Getm());
+      int codei = MatrixExp(mtx.Getm(), mtx.GetData(), t, buffer);
+      if (code != NULL)
+        *code = codei;
+      return Matrix<real>(mtx.Getm(), mtx.Getm(), buffer, false);
+    #else
+      printf("Error: MExp is not enabled.\n");
+      return Matrix<real>();
+    #endif
+  }
+
 protected:
   int m, n;
   real * data;
   bool freeDataInDestructor;
 };
 
-// compute the Frobenius inner product of two matrices (sum of products of all pairwise entries)
-// example: double product = FrobeniusInnerProduct(A, B);
 template<class real>
-real FrobeniusInnerProduct(const Matrix<real> & mtx1, const Matrix<real> & mtx2);
-
-// transpose the matrix
-// example: A = Transpose(B);
-template<class real>
-inline const Matrix<real> Transpose(const Matrix<real> & mtx2);
-
-// compute matrix inverse
-// example: A = Inverse(B);
-template<class real>
-inline const Matrix<real> Inverse(const Matrix<real> & mtx2);
-
-// compute matrix pseudoinverse
-// example: A = PseudoInverse(B);
-template<class real>
-inline const Matrix<real> PseudoInverse(const Matrix<real> & mtx2, real singularValueThreshold, int * rank);
-
-// solve the least square system: mtx * output = rhs
-// rcond is the condition number beyond which matrix singular values are considered singular (see also LAPACK)
-// rank is a pointer to a single integer, giving the non-singular rank of the matrix, based on rcond
-// example:  A * X = B
-// int rank;
-// X = LeastSquareSolve(A, B, 1e-12, &rank);
-template<class real>
-inline const Matrix<real> LeastSquareSolve(const Matrix<real> & mtx, const Matrix<real> & rhs, real rcond, int * rank);
-
-
-// computes A = exp(t*mtx), where A and mtx are square matrices, and t is a scalar
-// code is a pointer to an integer where the xgpasm expokit routine exit code will be stored (you can pass NULL to discard this code); normal termination is code 0
-template<class real>
-inline const Matrix<real> MExp(real t, const Matrix<real> & mtx, int * code = NULL);
-
-// === below is the inlined implementation ===
-
-template<class real>
-inline real FrobeniusInnerProduct(const Matrix<real> & mtx1, const Matrix<real> & mtx2)
+inline const real & Matrix<real>::operator() (int row, int column) const
 {
-  if ((mtx1.Getm() != mtx2.Getm()) || (mtx1.Getn() != mtx2.Getn()))
-  {    
-    printf("Matrix size mismatch in Matrix::FrobeniusInnerProduct.\n");
-    throw 10;
-  }
-  real product = 0.0;
-  int mn = mtx1.Getm() * mtx1.Getn();
-  for(int i=0; i<mn; i++)
-    product += mtx1.GetData()[i] * mtx2.GetData()[i];
-  return product;
+  return data[ELT(m,row,column)];
 }
 
 template<class real>
-inline const Matrix<real> Transpose(const Matrix<real> & mtx2)
+inline real & Matrix<real>::operator() (int row, int column) 
 {
-  Matrix<real> newMat(mtx2.Getn(), mtx2.Getm());
-  for(int col = 0; col < mtx2.Getn(); col++)
-    for(int row = 0; row < mtx2.Getm(); row++)
-      newMat(col, row) = mtx2(row, col);
-  return newMat;
-}
-
-template<class real>
-inline const Matrix<real> Inverse(const Matrix<real> & mtx2)
-{
-  if (mtx2.Getm() != mtx2.Getn())
-  {    
-    printf("Matrix size mismatch in Matrix::Inverse . mtx2.m = %d, mtx2.n = %d\n",      mtx2.Getm(), mtx2.Getn());
-    throw 11;
-  }
-  real * buffer = InverseMatrix(mtx2.Getm(), mtx2.GetData());
-  return Matrix<real>(mtx2.Getm(), mtx2.Getm(), buffer, false);
-}
-
-template<class real>
-inline const Matrix<real> PseudoInverse(const Matrix<real> & mtx2, real singularValueThreshold, int * rank)
-{
-  real * buffer = PseudoInverseMatrix(mtx2.Getm(), mtx2.Getn(),
-    mtx2.GetData(), singularValueThreshold, rank);
-  return Matrix<real>(mtx2.Getn(), mtx2.Getm(), buffer, false);
-}
-
-template<class real>
-inline const Matrix<real> LeastSquareSolve(const Matrix<real> & mtx, const Matrix<real> & rhs, real rcond, int * rank)
-{
-  if (mtx.Getm() != rhs.Getm())
-  {    
-    printf("Matrix size mismatch in Matrix::LeastSquareSolve . mtx.m = %d, rhs.m = %d\n", mtx.Getm(), rhs.Getm());
-    throw 12;
-  }
-  real * buffer = MatrixLeastSquareSolve(mtx.Getm(), mtx.Getn(), rhs.Getn(), 
-    mtx.GetData(), rhs.GetData(), rcond, rank);
-  return Matrix<real>(mtx.Getn(), rhs.Getn(), buffer, false);
-}  
-
-template<class real>
-inline const Matrix<real> MExp(real t, const Matrix<real> & mtx, int * code)
-{
-  #ifdef VEGA_USE_EXPOKIT
-    if (mtx.Getm() != mtx.Getn())
-    {    
-      printf("Matrix size mismatch in Matrix::MExp . mtx.m = %d, mtx.n = %d\n", mtx.Getm(), mtx.Getn());
-      throw 13;
-    }
-
-    real * buffer = (real*) malloc (sizeof(real) * mtx.Getm() * mtx.Getm());
-    int codei = MatrixExp(mtx.Getm(), mtx.GetData(), t, buffer);
-    if (code != NULL)
-      *code = codei;
-    return Matrix<real>(mtx.Getm(), mtx.Getm(), buffer, false);
-  #else
-    printf("Error: MExp is not enabled.\n");
-    return Matrix<real>();
-  #endif
+  return data[ELT(m,row,column)];
 }
 
 #endif

@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
+ * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -80,7 +76,7 @@ public:
   // constrainedDOFs is an integer array of degrees of freedom that are to be fixed to zero (e.g., to permanently fix a vertex in a deformable simulation)
   // constrainedDOFs are 0-indexed (separate DOFs for x,y,z), and must be pre-sorted (ascending)
   // numThreads applies only to the PARDISO solver; if numThreads > 0, the sparse linear solves are multi-threaded; default: 0 (use single-threading)
-  ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix, ForceModel * forceModel, int numConstrainedDOFs=0, int * constrainedDOFs=NULL, double dampingMassCoef=0.0, double dampingStiffnessCoef=0.0, int maxIterations = 1, double epsilon = 1E-6, double NewmarkBeta=0.25, double NewmarkGamma=0.5, int numSolverThreads=0); 
+  ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix, ForceModel * forceModel, int positiveDefiniteSolver=0, int numConstrainedDOFs=0, int * constrainedDOFs=NULL, double dampingMassCoef=0.0, double dampingStiffnessCoef=0.0, int maxIterations = 1, double epsilon = 1E-6, double NewmarkBeta=0.25, double NewmarkGamma=0.5, int numSolverThreads=0); 
 
   virtual ~ImplicitNewmarkSparse();
 
@@ -98,6 +94,7 @@ public:
   virtual void SetTangentStiffnessMatrixOffset(SparseMatrix * tangentStiffnessMatrixOffset, int reuseTopology=1);
 
   // performs one step of simulation (returns 0 on sucess, and 1 on failure)
+  // failure can occur, for example, if you are using the positive definite solver and the system matrix has negative eigenvalues
   virtual int DoTimestep(); 
 
   inline void SetNewmarkBeta(double NewmarkBeta) { this->NewmarkBeta = NewmarkBeta; UpdateAlphas(); }
@@ -122,6 +119,7 @@ protected:
   void UpdateAlphas();
   bool useStaticSolver;
 
+  int positiveDefiniteSolver;
   int numSolverThreads;
   #ifdef PARDISO
     PardisoSolver * pardisoSolver;

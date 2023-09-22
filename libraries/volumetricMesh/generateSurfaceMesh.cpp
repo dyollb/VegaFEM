@@ -1,23 +1,19 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
- * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC *
+ * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Yijing Li                                *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -34,20 +30,123 @@
 #include "objMesh.h"
 #include "generateSurfaceMesh.h"
 #include "cubicMesh.h"
-#include "triKey.h"
-#include "rectKey.h"
 using namespace std;
 
-// the main routine
-ObjMesh * GenerateSurfaceMesh::ComputeMesh(const VolumetricMesh * mesh, bool triangulate, bool allElementFaces)
+// classes to disambiguate and sort faces
+
+class TopologicalFaceI
 {
+public:
+  inline TopologicalFaceI(int p1, int p2, int p3, int p4)
+  {
+    vertices[0] = p1;
+    vertices[1] = p2;
+    vertices[2] = p3;
+    vertices[3] = p4;
+    size = 4;
+    sortVertices();
+  }
+
+  inline TopologicalFaceI(int p1, int p2, int p3)
+  {
+    vertices[0] = p1;
+    vertices[1] = p2;
+    vertices[2] = p3;
+    size = 3;
+    sortVertices();
+  }
+    
+  //accessor
+  int vertex(int i) const { return vertices[i];} 
+  int sortedVertex(int i) const { return sortedVertices[i]; }
+  int faceDegree() const { return size; } 
+  const int * index() const { return vertices; }
+
+  TopologicalFaceI(const TopologicalFaceI & face)
+  {
+    size = face.size;
+    memcpy(vertices, face.vertices, sizeof(int) * size);
+    memcpy(sortedVertices, face.sortedVertices, sizeof(int) * size);
+  }
+
+  TopologicalFaceI & operator = (const TopologicalFaceI & face)
+  {
+    if (&face == this) 
+      return *this;
+    size = face.size;
+    memcpy(vertices, face.vertices, sizeof(int) * size);
+    memcpy(sortedVertices, face.sortedVertices, sizeof(int) * size);
+    return *this;
+  }
+
+protected:
+
+  inline void sortVertices() 
+  { 
+    memcpy(sortedVertices, vertices, sizeof(int) * size);
+    sort(sortedVertices, sortedVertices + size);
+  }
+
+  int size;
+  int vertices[4];
+  int sortedVertices[4];
+  //std::vector<int> vertices_;
+};
+
+class FaceOrder
+{
+public:
+  bool operator()(const TopologicalFaceI & x, const TopologicalFaceI & y) const;
+};
+
+bool FaceOrder::operator()(const TopologicalFaceI & x, const TopologicalFaceI & y) const
+{
+  int degx = x.faceDegree();
+  int degy = y.faceDegree();
+  int mindeg = (degx < degy) ? degx : degy;
+
+  for (int i = 0; i < mindeg; i++)
+  {
+    int x1 = x.sortedVertex(i);
+    int y1 = y.sortedVertex(i);
+
+    if (x1 < y1)
+      return true;
+    if (y1 < x1)
+      return false;
+  }
+
+  return false;
+}
+
+// the main routine
+ObjMesh * GenerateSurfaceMesh::ComputeMesh(VolumetricMesh * mesh, bool triangulateOutputMesh)
+{
+  // create an empty surface mesh
+  ObjMesh * objMesh = new ObjMesh();
+
+  // create default group
+  objMesh->addGroup("Default");
+
+  // add all vertices
+  for(int i=0; i<mesh->getNumVertices(); i++)
+  {
+    Vec3d pos = *(mesh->getVertex(i));
+    objMesh->addVertexPosition(pos);
+  }
+
+  set<TopologicalFaceI,FaceOrder> surfaceFaces;
+  //set<TopologicalFaceI,FaceOrder> interiorFaces; // not needed
+
+  //interiorFaces.clear();
+
   int numElementVertices = mesh->getNumElementVertices();
   int faceDegree = 0;
 
   if (numElementVertices == 4)
   {
     faceDegree = 3;
-    triangulate = false;
+    triangulateOutputMesh = false;
   }
 
   if (numElementVertices == 8)
@@ -56,135 +155,114 @@ ObjMesh * GenerateSurfaceMesh::ComputeMesh(const VolumetricMesh * mesh, bool tri
   if (faceDegree == 0)
   {
     printf("Error: unsupported mesh type encountered.\n");
-    return nullptr;
+    return NULL;
   }  
-
-  // create an empty surface mesh
-  ObjMesh * objMesh = new ObjMesh;
-  objMesh->addGroup(ObjMesh::Group());
-
-  // add all vertices
-  for(int i=0; i<mesh->getNumVertices(); i++)
-    objMesh->addVertexPosition(mesh->getVertex(i));
 
   // build unique list of all surface faces
 
   if (numElementVertices == 4) // tet mesh
   {
-    map<OTriKey,int> surfaceFaces;
     for (int i=0; i<mesh->getNumElements(); i++)
     {
       // compute determinant to establish orientation
-      double det = dot(mesh->getVertex(i, 1) - mesh->getVertex(i, 0), cross(mesh->getVertex(i, 2) - mesh->getVertex(i, 0), mesh->getVertex(i, 3) - mesh->getVertex(i, 0)));
+      double det = dot(*(mesh->getVertex(i, 1)) - *(mesh->getVertex(i, 0)), cross(*(mesh->getVertex(i, 2)) - *(mesh->getVertex(i, 0)), *(mesh->getVertex(i, 3)) - *(mesh->getVertex(i, 0))));
 
-      auto processFace = [&](int q0, int q1, int q2)
-      {
-        OTriKey key(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2));
-        if (allElementFaces) // get all faces
-        {
-          objMesh->addFaceToGroup(ObjMesh::Face(key[0], key[1], key[2]), 0);
-          return;
-        }
-        auto it = surfaceFaces.find(key);
-        if (it != surfaceFaces.end())
-          it->second++;
-        else 
-        {
-          auto revKey = key.getReversedTriKey();
-          it = surfaceFaces.find(revKey);  
-          if (it != surfaceFaces.end()) 
-            it->second--;
-          else
-            surfaceFaces.emplace(key, 1);
-        }
-      };
+        //surfaceFaces.erase(*face);
+        //interiorFaces.insert(*face);
+  
+      #define PROCESS_FACE3(q0,q1,q2) \
+          { \
+            TopologicalFaceI face(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2)); \
+            if (surfaceFaces.find(face) != surfaceFaces.end()) \
+              surfaceFaces.erase(face); \
+            else \
+              surfaceFaces.insert(face); \
+          }
+          
   
       if (det >= 0)
       {
-        processFace(1,2,3);
-        processFace(2,0,3);
-        processFace(3,0,1);
-        processFace(1,0,2);
+        PROCESS_FACE3(1,2,3)
+        PROCESS_FACE3(2,0,3)
+        PROCESS_FACE3(3,0,1)
+        PROCESS_FACE3(1,0,2)
       }
       else
       {
-        processFace(3,2,1);
-        processFace(3,0,2);
-        processFace(1,0,3);
-        processFace(2,0,1);
+        PROCESS_FACE3(3,2,1)
+        PROCESS_FACE3(3,0,2)
+        PROCESS_FACE3(1,0,3)
+        PROCESS_FACE3(2,0,1)
       }
-    }
 
-    if (allElementFaces == false) // we build surface mesh
-    {
-      for(const auto & p : surfaceFaces)
-      {
-        if (p.second == 0) continue; // inner face
-        auto key = p.first;
-        int numFaces = abs(p.second);
-        if (p.second < 0) key.reverse();
-        for(int i = 0; i < numFaces; i++)
-        {
-          objMesh->addFaceToGroup(ObjMesh::Face(key[0], key[1], key[2]), 0);
-        }
-      }
+      #undef PROCESS_FACE3
     }
   }
-  else if (numElementVertices == 8) // cubic mesh
+
+  if (numElementVertices == 8) // cubic mesh
   {
-    map<ORectKey,int> surfaceFaces;
     for (int i = 0; i < mesh->getNumElements(); i++)
     {
-      auto processFace = [&](int q0, int q1, int q2, int q3)
-      {
-        ORectKey key(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2),mesh->getVertexIndex(i,q3));
-        if (allElementFaces)
-        {
-          objMesh->addFaceToGroup(ObjMesh::Face(key[0], key[1], key[2], key[3]), 0);
-          return;
-        }
-        auto it = surfaceFaces.find(key);
-        if (it != surfaceFaces.end())
-          it->second++;
-        else 
-        {
-          auto revKey = key.getReversedRectKey();
-          it = surfaceFaces.find(revKey);  
-          if (it != surfaceFaces.end()) 
-            it->second--;
-          else
-            surfaceFaces.emplace(key, 1);
-        }
-      };
   
-      processFace(0,3,2,1);
-      processFace(4,5,6,7);
-      processFace(0,1,5,4);
-      processFace(3,7,6,2);
-      processFace(1,2,6,5);
-      processFace(0,4,7,3);
-    }
-    if (allElementFaces == false) // we build surface mesh
-    {
-      for(const auto & p : surfaceFaces)
-      {
-        if (p.second == 0) continue; // inner face
-        auto key = p.first;
-        int numFaces = abs(p.second);
-        if (p.second < 0) key.reverse();
-        for(int i = 0; i < numFaces; i++)
-        {
-          if (triangulate)
-          {
-            objMesh->addFaceToGroup(ObjMesh::Face(key[0], key[1], key[2]), 0);
-            objMesh->addFaceToGroup(ObjMesh::Face(key[2], key[3], key[0]), 0);
+      #define PROCESS_FACE4(q0,q1,q2,q3) \
+          { \
+            TopologicalFaceI face(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2),mesh->getVertexIndex(i,q3)); \
+          if (surfaceFaces.find(face) != surfaceFaces.end()) \
+            surfaceFaces.erase(face); \
+          else \
+            surfaceFaces.insert(face); \
           }
-          else
-            objMesh->addFaceToGroup(ObjMesh::Face(key[0], key[1], key[2], key[3]), 0);
-        }
-      }
+  
+      PROCESS_FACE4(0,3,2,1)
+      PROCESS_FACE4(4,5,6,7)
+      PROCESS_FACE4(0,1,5,4)
+      PROCESS_FACE4(3,7,6,2)
+      PROCESS_FACE4(1,2,6,5)
+      PROCESS_FACE4(0,4,7,3)
+
+      #undef PROCESS_FACE4
     }
   }
+
+  // now, surfaceFaces contains a unique list of all surface faces
+  // add all faces to the surface mesh 
+  //int * index = (int*) malloc (sizeof(int) * faceDegree);
+  set<TopologicalFaceI,FaceOrder>::iterator face;
+  for (face = surfaceFaces.begin(); face != surfaceFaces.end(); ++face) // all surface faces
+  {
+    //for (int i = 0; i < faceDegree; i++)
+    //  index[i] = face->vertex(i);
+    const int * index = face->index();
+
+    std::pair< bool, unsigned int > texPos(false,0); // no textures
+    std::pair< bool, unsigned int > normal(false,0); // no normals
+
+    if (triangulateOutputMesh)
+    {
+      // triangulate the face into two triangles
+      ObjMesh::Face newFace1;
+      newFace1.addVertex( ObjMesh::Vertex( index[0], texPos, normal ) );
+      newFace1.addVertex( ObjMesh::Vertex( index[1], texPos, normal ) );
+      newFace1.addVertex( ObjMesh::Vertex( index[2], texPos, normal ) );
+
+      ObjMesh::Face newFace2;
+      newFace2.addVertex( ObjMesh::Vertex( index[2], texPos, normal ) );
+      newFace2.addVertex( ObjMesh::Vertex( index[3], texPos, normal ) );
+      newFace2.addVertex( ObjMesh::Vertex( index[0], texPos, normal ) );
+ 
+      objMesh->addFaceToGroup(newFace1,0);
+      objMesh->addFaceToGroup(newFace2,0);
+    }
+    else
+    {
+      ObjMesh::Face newFace1;
+      for(int i=0; i<faceDegree; i++)
+        newFace1.addVertex( ObjMesh::Vertex( index[i], texPos, normal ) );
+      objMesh->addFaceToGroup(newFace1, 0);
+    }
+  }
+
+  //free(index);
 
   if (mesh->getElementType() == CubicMesh::elementType())
   {
@@ -204,25 +282,19 @@ ObjMesh * GenerateSurfaceMesh::ComputeMesh(const VolumetricMesh * mesh, bool tri
 }
 
 // advanced routine, not used very often
-ObjMesh * GenerateSurfaceMesh::ComputeMesh(const VolumetricMesh * mesh, const ObjMesh * superMesh, bool triangulate)
+ObjMesh * GenerateSurfaceMesh::ComputeMesh(VolumetricMesh * mesh, ObjMesh * superMesh, bool triangulateOutputMesh)
 {
-  ObjMesh * surfaceMesh = ComputeMesh(mesh, false);
-
   // for each volumetric mesh vertex, find the nearest obj file vertex
-  vector<int> closestObjVertex(mesh->getNumVertices());
+  int * closestObjVertex = (int*) malloc (sizeof(int) * mesh->getNumVertices());
   for(int i=0; i<mesh->getNumVertices(); i++)
   {
-    const Vec3d & pos = mesh->getVertex(i);
+    Vec3d pos = *(mesh->getVertex(i));
     double dist;
     closestObjVertex[i] = superMesh->getClosestVertex(pos, &dist);
   }
 
-  // create a new objMesh
-  ObjMesh * objMesh = new ObjMesh();
-  objMesh->addGroup("Default");
-
-  // build the list of triangles from superMesh
-  set<UTriKey> superMeshFaces;
+  // build the list of triangles
+  set<TopologicalFaceI,FaceOrder> superMeshFaces;
   for(unsigned int i=0; i < superMesh->getNumGroups(); i++)
   {
     const ObjMesh::Group * groupHandle = superMesh->getGroupHandle(i);
@@ -232,31 +304,191 @@ ObjMesh * GenerateSurfaceMesh::ComputeMesh(const VolumetricMesh * mesh, const Ob
       if (faceHandle->getNumVertices() != 3)
       {
         printf("Error: input superMesh is not triangulated.\n");
-        return nullptr;
+        free(closestObjVertex);
+        return NULL;
       }
 
-      superMeshFaces.emplace(faceHandle->getVertexPositionIndex(0), faceHandle->getVertexPositionIndex(1), faceHandle->getVertexPositionIndex(2));
+      superMeshFaces.insert(TopologicalFaceI(faceHandle->getVertexHandle(0)->getPositionIndex(), faceHandle->getVertexHandle(1)->getPositionIndex(), faceHandle->getVertexHandle(2)->getPositionIndex()));
     }
   }
 
-  for(unsigned int i=0; i < surfaceMesh->getNumGroups(); i++)
+  // create empty surface mesh
+  ObjMesh * objMesh = new ObjMesh();
+
+  // create default group
+  objMesh->addGroup("Default");
+
+  // add all vertices
+  for(int i=0; i<mesh->getNumVertices(); i++)
   {
-    const ObjMesh::Group * groupHandle = surfaceMesh->getGroupHandle(i);
-    for(unsigned int iFace = 0; iFace < groupHandle->getNumFaces(); iFace++)
+    Vec3d posm = *(mesh->getVertex(i));
+    Vec3d pos;
+    pos[0] = posm[0]; 
+    pos[1] = posm[1]; 
+    pos[2] = posm[2];
+    objMesh->addVertexPosition(pos);
+  }
+
+  set<TopologicalFaceI,FaceOrder> surfaceFaces;
+  //set<TopologicalFaceI,FaceOrder> interiorFaces;
+
+  // create a unique list of faces
+  surfaceFaces.clear();
+  //interiorFaces.clear();
+
+  int numElementVertices = mesh->getNumElementVertices();
+  int faceDegree = 0;
+
+  if (numElementVertices == 4)
+  {
+    faceDegree = 3;
+    triangulateOutputMesh = false;
+  }
+
+  if (numElementVertices == 8)
+    faceDegree = 4;
+
+  if (faceDegree == 0)
+  {
+    printf("Error: unsupported mesh type encountered.\n");
+    free(closestObjVertex);
+    return NULL;
+  }  
+
+  // build unique list of all surface faces
+
+  if (numElementVertices == 4)
+  {
+    for (int i=0; i<mesh->getNumElements(); i++)
     {
-      const ObjMesh::Face * faceHandle = groupHandle->getFaceHandle(iFace);
-      if (faceHandle->getNumVertices() != 3) continue;
-      UTriKey key(closestObjVertex[faceHandle->getVertexPositionIndex(0)], 
-                  closestObjVertex[faceHandle->getVertexPositionIndex(1)], 
-                  closestObjVertex[faceHandle->getVertexPositionIndex(2)]);
-      if (superMeshFaces.find(key) == superMeshFaces.end()) continue;
-      // only include faces from superMesh
-      objMesh->addFaceToGroup(ObjMesh::Face(faceHandle->getVertexPositionIndex(0), 
-                                            faceHandle->getVertexPositionIndex(1), 
-                                            faceHandle->getVertexPositionIndex(2)), 0);
+      // compute determinant to establish orientation
+      double det = dot(*(mesh->getVertex(i, 1)) - *(mesh->getVertex(i, 0)), cross(*(mesh->getVertex(i, 2)) - *(mesh->getVertex(i, 0)), *(mesh->getVertex(i, 3)) - *(mesh->getVertex(i, 0))));
+
+        //surfaceFaces.erase(*face);
+        //interiorFaces.insert(*face);
+  
+      #define PROCESS_FACE3(q0,q1,q2) \
+          { \
+            TopologicalFaceI face(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2)); \
+            if (surfaceFaces.find(face) != surfaceFaces.end()) \
+              surfaceFaces.erase(face);\
+            else \
+              surfaceFaces.insert(face); \
+          }
+  
+      if (det >= 0)
+      {
+        PROCESS_FACE3(1,2,3)
+        PROCESS_FACE3(2,0,3)
+        PROCESS_FACE3(3,0,1)
+        PROCESS_FACE3(1,0,2)
+      }
+      else
+      {
+        PROCESS_FACE3(3,2,1)
+        PROCESS_FACE3(3,0,2)
+        PROCESS_FACE3(1,0,3)
+        PROCESS_FACE3(2,0,1)
+      }
+
+      #undef PROCESS_FACE3
     }
   }
-  delete surfaceMesh;
+
+  if (numElementVertices == 8)
+  {
+    for (int i=0; i<mesh->getNumElements(); i++)
+    {
+        //surfaceFaces.erase(*face);
+        //interiorFaces.insert(*face);
+  
+      #define PROCESS_FACE4(q0,q1,q2,q3) \
+          { \
+            TopologicalFaceI face(mesh->getVertexIndex(i,q0),mesh->getVertexIndex(i,q1),mesh->getVertexIndex(i,q2),mesh->getVertexIndex(i,q3)); \
+            if (surfaceFaces.find(face) != surfaceFaces.end()) \
+              surfaceFaces.erase(face); \
+            else \
+              surfaceFaces.insert(face); \
+          }
+  
+      PROCESS_FACE4(0,3,2,1)
+      PROCESS_FACE4(4,5,6,7)
+      PROCESS_FACE4(0,1,5,4)
+      PROCESS_FACE4(3,7,6,2)
+      PROCESS_FACE4(1,2,6,5)
+      PROCESS_FACE4(0,4,7,3)
+
+      #undef PROCESS_FACE4
+    }
+  }
+
+  // now, surfaceFaces contains a unique list of all surface faces
+  // erase any faces that are not also superMesh faces
+  set<TopologicalFaceI,FaceOrder> trueSurfaceFaces;
+  for(set<TopologicalFaceI,FaceOrder> :: iterator iter = surfaceFaces.begin(); iter != surfaceFaces.end(); iter++)
+  {
+    int vtx0 = closestObjVertex[iter->vertex(0)];
+    int vtx1 = closestObjVertex[iter->vertex(1)];
+    int vtx2 = closestObjVertex[iter->vertex(2)];
+    if (superMeshFaces.find(TopologicalFaceI(vtx0, vtx1, vtx2)) != superMeshFaces.end())
+      trueSurfaceFaces.insert(*iter);
+  }
+
+  surfaceFaces = trueSurfaceFaces;
+
+  // add all faces to the surface obj mesh of the voxel mesh
+  int * index = (int*) malloc (sizeof(int) * faceDegree);
+  set<TopologicalFaceI,FaceOrder>::iterator face;
+  for (face = surfaceFaces.begin(); face != surfaceFaces.end(); ++face) // all surface faces
+  {
+    for (int i=0; i<faceDegree; i++)
+      index[i] = face->vertex(i);
+
+    std::pair< bool, unsigned int > texPos(false,0); // no textures
+    std::pair< bool, unsigned int > normal(false,0); // no normals
+
+    if (triangulateOutputMesh)
+    {
+      // triangulate the face into two triangles
+      ObjMesh::Face newFace1;
+      newFace1.addVertex( ObjMesh::Vertex( index[0], texPos, normal ) );
+      newFace1.addVertex( ObjMesh::Vertex( index[1], texPos, normal ) );
+      newFace1.addVertex( ObjMesh::Vertex( index[2], texPos, normal ) );
+
+      ObjMesh::Face newFace2;
+      newFace2.addVertex( ObjMesh::Vertex( index[2], texPos, normal ) );
+      newFace2.addVertex( ObjMesh::Vertex( index[3], texPos, normal ) );
+      newFace2.addVertex( ObjMesh::Vertex( index[0], texPos, normal ) );
+ 
+      objMesh->addFaceToGroup(newFace1,0);
+      objMesh->addFaceToGroup(newFace2,0);
+    }
+    else
+    {
+      ObjMesh::Face newFace1;
+      for(int i=0; i<faceDegree; i++)
+        newFace1.addVertex( ObjMesh::Vertex( index[i], texPos, normal ) );
+      objMesh->addFaceToGroup(newFace1, 0);
+    }
+  }
+
+  free(index);
+
+  if (mesh->getElementType() == CubicMesh::elementType())
+  {
+    // cubic mesh
+    objMesh->setNormalsToFaceNormals();
+  }
+  else
+  {
+    // other types of meshes (e.g., tet)
+    objMesh->computePseudoNormals();
+    objMesh->setNormalsToPseudoNormals();
+  }
+
+  free(closestObjVertex);
+
+  objMesh->setSingleMaterial(ObjMesh::Material());
 
   return objMesh;
 }

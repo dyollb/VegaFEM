@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=PERFORMANCECOUNTER
 endif
 
+include ../../Makefile-headers/Makefile-header
 R ?= ../..
-include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-PERFORMANCECOUNTER_OBJECTS=profiler.o
+PERFORMANCECOUNTER_OBJECTS=performanceCounter.o
 
 # the libraries this library depends on
-PERFORMANCECOUNTER_LIBS=matrixIO basicAlgorithms
+PERFORMANCECOUNTER_LIBS=
 
 # the headers in this library
-PERFORMANCECOUNTER_HEADERS=performanceCounter.h stopWatch.h profiler.h frameRateLock.h
+PERFORMANCECOUNTER_HEADERS=performanceCounter.h
 
 PERFORMANCECOUNTER_OBJECTS_FILENAMES=$(addprefix $(L)/performanceCounter/, $(PERFORMANCECOUNTER_OBJECTS))
 PERFORMANCECOUNTER_HEADER_FILENAMES=$(addprefix $(L)/performanceCounter/, $(PERFORMANCECOUNTER_HEADERS))
