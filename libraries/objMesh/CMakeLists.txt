@@ -11,7 +11,6 @@ set(SRCS
     objMeshOrientable.cpp
     octree.cpp
     simpleSphere.cpp
-    triangle-closestPoint.cpp
     triangle.cpp
     tribox3.cpp)
 
