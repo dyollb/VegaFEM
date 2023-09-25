@@ -9,7 +9,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # configuration options
-option(VEGA_USE_TBB "Build VegaFEM using TBB" OFF)
+option(VEGA_USE_TBB "Build VegaFEM using TBB" ON)
 option(VEGA_USE_PARDISO "Build VegaFEM using PARDISO (requires MKL)" OFF)
 option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
