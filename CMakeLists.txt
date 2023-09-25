@@ -101,7 +101,7 @@ set(VEGA_LIBRARIES
     imageIO
     insertRows
     integrator
-    integratorDense
+#    integratorDense # not needed
     integratorSparse
     isotropicHyperelasticFEM
     loadList
