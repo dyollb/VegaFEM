@@ -1,10 +1,15 @@
 #ifndef _SPARSESOLVER_AVAILABILITY_H_
 #define _SPARSESOLVER_AVAILABILITY_H_
 
-// uncomment the corresponding line if Pardiso or SPOOLES is installed and configured
+#include "vega-config.h"
 
-//#define PARDISO_SOLVER_IS_AVAILABLE
-//#define SPOOLES_SOLVER_IS_AVAILABLE
+#ifdef VEGA_USE_PARDISO
+    #define PARDISO_SOLVER_IS_AVAILABLE
+#endif
+
+#ifdef VEGA_USE_SPOOLES
+    #define SPOOLES_SOLVER_IS_AVAILABLE
+#endif
 
 #endif
 
