@@ -1,4 +1,4 @@
-# VegaFEM Library v4.0
+# VegaFEM Library v2.2
 [![Build Actions Status](https://github.com/dyollb/VegaFEM/workflows/C/C++%20CI/badge.svg)](https://github.com/dyollb/VegaFEM/actions)
 [![License](https://img.shields.io/badge/license-BSD_3--Clause-green.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
