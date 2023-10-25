@@ -1,28 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "Large Modal Deformation Factory",                                    *
  * a pre-processing utility for model reduction of                       *
  * deformable objects undergoing large deformations.                     *
  *                                                                       *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -44,7 +40,7 @@
 #include "StVKStiffnessMatrix.h"
 #include "StVKCubeABCD.h"
 #include "matrixIO.h"
-#include "constrainedDOFs.h"
+#include "insertRows.h"
 #include "StVKElementABCDLoader.h"
 #include "ARPACKSolver.h"
 #include "largeModalDeformationFactory.h"
@@ -54,8 +50,6 @@
 #else
   #define ISNAN isnan
 #endif
-
-using namespace std;
 
 void MyFrame::SetAutoRenderingMagnitude(ModalMatrix * modalMatrix)
 {
@@ -512,7 +506,7 @@ void * MyFrame::LinearModesWorker(
   {
     // insert zero rows into the computed modes
     int oneIndexed = 1;
-    ConstrainedDOFs::InsertDOFs(n3, &modesTemp[numRetainedDOFs*i], &((*modes_)[n3*i]), 
+    InsertRows(n3, &modesTemp[numRetainedDOFs*i], &((*modes_)[n3*i]), 
       3 * numConstrainedVertices, constrainedDOFs, oneIndexed);
   }
 

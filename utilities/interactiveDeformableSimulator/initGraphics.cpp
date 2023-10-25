@@ -1,25 +1,21 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "Interactive deformable object simulator" driver application,         *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Fun Shing Sin, Daniel Schroeder          *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -32,17 +28,17 @@
  *                                                                       *
  *************************************************************************/
 
-#include "initGraphics.h"
-
-#include <math.h>
-
 #ifndef M_PI
   #define M_PI 3.141592653589793238462643
 #endif
 
+#include <math.h>
+#include "initGraphics.h"
+
 extern void displayFunction(void);
 extern void idleFunction(void);
 extern void reshape(int,int);
+extern void handleMenu(int);
 extern void keyboardFunction(unsigned char key, int x, int y);
 extern void specialFunction(int key, int x, int y);
 extern void mouseButtonActivityFunction(int button, int state, int x, int y);
@@ -82,6 +78,8 @@ void initCamera(double cameraRadius, double cameraLongitude, double cameraLattit
 
   double upPos[3] = {0,1,0};
   *camera = new SphericalCamera(cameraRadius, 1.0 * cameraLongitude / 360 * (2*M_PI), 1.0 * cameraLattitude / 360 * (2*M_PI), focusPos,  upPos, 0.05, camera2WorldScalingFactor); 
+
+  (*camera)->SetOrigin(focusPos); 
 }
 
 void initGraphics(int windowWidth, int windowHeight)

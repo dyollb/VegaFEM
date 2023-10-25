@@ -1,28 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "Large Modal Deformation Factory",                                    *
  * a pre-processing utility for model reduction of                       *
  * deformable objects undergoing large deformations.                     *
  *                                                                       *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -39,8 +35,6 @@
 
 #include "largeModalDeformationFactory.h"
 
-using namespace std;
-
 int MyFrame::LoadFixedVertices(wxString & fixedVerticesFilename)
 {
   int * newFixedVertices = NULL;
@@ -48,7 +42,7 @@ int MyFrame::LoadFixedVertices(wxString & fixedVerticesFilename)
 
   SetCursor(*wxHOURGLASS_CURSOR);
   const char * filename = fixedVerticesFilename.mb_str();
-  int code = ListIO::load((char*) filename, &newNumFixedVertices,&newFixedVertices);
+  int code = LoadList::load((char*) filename, &newNumFixedVertices,&newFixedVertices);
   SetCursor(*wxSTANDARD_CURSOR);
 
   if (code != 0)
@@ -145,7 +139,7 @@ void MyFrame::OnSaveFixedVertices(wxCommandEvent& event)
       //loadList.sort(numFixedVertices, fixedVertices);
       int offset = 1;
       const char * filename = vertexFilename.mb_str();
-      int code = ListIO::save((char*)filename, numFixedVertices, fixedVerticesC, offset);
+      int code = LoadList::save((char*)filename, numFixedVertices, fixedVerticesC, offset);
       free(fixedVerticesC);
       if (code != 0)
         this->errMsg( _T("Saving error"), _T("Unable to save fixed vertices to ") +  vertexFilename );

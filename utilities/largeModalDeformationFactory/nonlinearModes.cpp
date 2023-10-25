@@ -1,28 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 4.0                               *
+ * Vega FEM Simulation Library Version 2.2                               *
  *                                                                       *
  * "Large Modal Deformation Factory",                                    *
  * a pre-processing utility for model reduction of                       *
  * deformable objects undergoing large deformations.                     *
  *                                                                       *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/vega                                      *
+ * http://www.jernejbarbic.com/code                                      *
  *                                                                       *
- * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
- *           Danyong Zhao, Bohan Wang,                                   *
- *           Fun Shing Sin, Daniel Schroeder,                            *
+ * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC,                *
- *          Sloan Foundation, Okawa Foundation,                          *
- *          USC Annenberg Foundation                                     *
+ *          Zumberge Research and Innovation Fund at USC                 *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -41,7 +37,7 @@
 #include "generateMassMatrix.h"
 #include "StVKStiffnessMatrix.h"
 #include "StVKHessianTensor.h"
-#include "constrainedDOFs.h"
+#include "insertRows.h"
 #include "sparseSolvers.h"
 #include "matrixIO.h"
 #include "matrixPCA.h"
@@ -186,10 +182,10 @@ void MyFrame::OnComputeNonLinearModes(wxCommandEvent& event)
      )
   {
     this->errMsg( _T("Cannot compute the simulation basis"),  
-      _T("You must compute/provide at least one of the following:\n")
-      _T("  (1) linear modes, frequencies, and modal derivatives, OR\n")
-      _T("  (2) external simulation data.\n")
-      );
+      _T("You must compute/provide at least one of the following:\n"
+         "  (1) linear modes, frequencies, and modal derivatives, OR\n"
+         "  (2) external simulation data.\n"
+      ) );
       return;
   }
 
