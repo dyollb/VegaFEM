@@ -29,8 +29,6 @@
 #ifndef _IPIVC_H_
 #define _IPIVC_H_
 
-#include "vega-config.h"
-
 // a buffer to hold r integers
 // a special buffer is necessary because INTEGER can be architecture-dependent
 class IPIVC
