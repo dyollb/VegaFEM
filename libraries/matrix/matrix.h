@@ -52,6 +52,7 @@
 #include "matrixMacros.h"
 #include "matrixBLAS.h"
 #include "matrixLAPACK.h"
+#include "vega-config.h"
 
 // uncomment the following to use the MExpv and MExp routines:
 //#define USE_EXPOKIT
