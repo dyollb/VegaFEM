@@ -1,20 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "generateInterpolant" utility , Copyright (C) 2007 CMU, 2009 MIT,     *
- *                                               2015 USC                *
+ *                                               2018 USC                *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -42,7 +46,7 @@ using namespace std;
 #include "matrixIO.h"
 #include "matrixMacros.h"
 #include "getopts.h"
-#include "loadList.h"
+#include "listIO.h"
 
 /*
   Builds an interpolant that can be used to efficiently transfer deformations from
@@ -126,8 +130,7 @@ int main(int argc, char ** argv)
   }
 
   int verbose = 1;
-  int numExternalVertices;
-  numExternalVertices = volumetricMesh->generateInterpolationWeights(numInterpolationLocations, interpolationLocations, &vertices, &weights, threshold, elementListp, verbose);
+  volumetricMesh->generateInterpolationWeights(numInterpolationLocations, interpolationLocations, &vertices, &weights, threshold, elementListp, verbose);
 
   printf("Saving weights to %s...\n", outputFilename); fflush(NULL);
   volumetricMesh->saveInterpolationWeights(outputFilename, numInterpolationLocations, volumetricMesh->getNumElementVertices(), vertices, weights);
@@ -135,14 +138,14 @@ int main(int argc, char ** argv)
   if (strcmp(outputElementFilename, "__none") != 0)
   {
     set<int> uniqueElementSet;
-    for(unsigned int i=0; i<numInterpolationLocations; i++)
+    for(int i=0; i<numInterpolationLocations; i++)
       uniqueElementSet.insert(elementList[i]);
 
     vector<int> uniqueElementList;
     for(set<int>::iterator iter = uniqueElementSet.begin(); iter != uniqueElementSet.end(); iter++)
       uniqueElementList.push_back(*iter);
 
-    LoadList saveList;
+    ListIO saveList;
     sort(uniqueElementList.begin(), uniqueElementList.end());
     int oneIndexed = 1;
     saveList.save(outputElementFilename, uniqueElementList.size(), &uniqueElementList[0], oneIndexed);

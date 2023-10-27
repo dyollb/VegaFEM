@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
+ * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Christopher Twigg, Daniel Schroeder      *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -171,7 +175,7 @@ int ObjMeshBinaryLoader::writeToBinaryFile(ObjMesh * objMesh, const std::string 
   unsigned int numVertexPositions = objMesh->getNumVertices();
   fout.write((char*)&numVertexPositions, sizeof(unsigned int));
   for(unsigned int i=0; i<numVertexPositions; i++)
-  {  
+  {
     Vec3d pos = objMesh->getPosition(i);
     writeVec3dToBinary(pos, &fout);
   }
@@ -255,7 +259,7 @@ int ObjMeshBinaryLoader::readFromBinary(ObjMesh::Face ** face, std::ifstream * f
   for(unsigned int i=0; i<numVertices; i++)
   {
     ObjMesh::Vertex * vertex;
-    readFromBinary(&vertex, fin);  
+    readFromBinary(&vertex, fin);
     (*face)->addVertex(*vertex);
   }
 
@@ -293,7 +297,7 @@ int ObjMeshBinaryLoader::readFromBinary(ObjMesh::Group ** group, std::ifstream *
   for(unsigned int i=0; i<numFaces; i++)
   {
     ObjMesh::Face * face;
-    readFromBinary(&face, fin);  
+    readFromBinary(&face, fin);
     (*group)->addFace(*face);
   }
 
@@ -325,7 +329,7 @@ int ObjMeshBinaryLoader::readFromBinary(ObjMesh::Material ** material, std::ifst
 
   string name;
   readStringFromBinary(name, fin);
-  
+
   #ifdef VERBOSE
     cout << name << endl;
   #endif

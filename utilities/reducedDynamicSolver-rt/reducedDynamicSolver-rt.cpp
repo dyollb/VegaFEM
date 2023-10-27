@@ -1,24 +1,28 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "Reduced deformable dynamics" real-time driver application.           *
  * Uses model reduction to rapidly simulate deformable objects           *
  * undergoing large deformations.                                        *
  *                                                                       *
- * Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                            *
+ * Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                            *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -62,7 +66,9 @@ using namespace std;
 
 #include "initGraphics.h"
 #include "sceneObjectReducedCPU.h"
-#include "sceneObjectReducedGPU.h"
+#ifdef USE_CG
+  #include "sceneObjectReducedGPU.h"
+#endif
 #include "performanceCounter.h"
 #include "implicitNewmarkDense.h"
 #include "implicitBackwardEulerDense.h"
@@ -121,7 +127,9 @@ PerformanceCounter titleBarCounter;
 PerformanceCounter explosionCounter;
 Lighting * lighting = NULL;
 SceneObjectReduced * deformableObjectRenderingMeshReduced = NULL;
-SceneObjectReducedGPU * deformableObjectRenderingMeshGPU = NULL;
+#ifdef USE_CG
+  SceneObjectReducedGPU * deformableObjectRenderingMeshGPU = NULL;
+#endif
 SceneObjectReducedCPU * deformableObjectRenderingMeshCPU = NULL;
 SceneObject * extraSceneGeometry = NULL;
 ModalMatrix * renderingModalMatrix = NULL;
@@ -193,6 +201,7 @@ void displayFunction(void)
   // Setup model transformations.
   glMatrixMode(GL_MODELVIEW); 
   glLoadIdentity();
+  glPolygonOffset(0.0,0.0);
 
   camera->Look();
 
@@ -636,42 +645,44 @@ void initScene()
   fq = (double*) calloc (r, sizeof(double));
   fqBase = (double*) calloc (r, sizeof(double));
 
-  // initialize the GPU rendering class for the deformable object
-  try
-  {
-    deformableObjectRenderingMeshGPU = new SceneObjectReducedGPU(deformableObjectFilename, renderingModalMatrix); // uses GPU to compute u=Uq
-  }
-  catch(int exceptionCode)
-  {
-    printf("Warning: unable to initialize GPU rendering for deformations (code: %d). Using CPU instead.\n", exceptionCode);
-    deformableObjectRenderingMeshGPU = NULL;
-    renderOnGPU = 0;
-  }
-
   // initialize the CPU rendering class for the deformable object
   deformableObjectRenderingMeshCPU = new SceneObjectReducedCPU(deformableObjectFilename, renderingModalMatrix); // uses CPU to compute u=Uq
-
   // prepare textures (if necessary)
   if (enableTextures)
   {
-    if (deformableObjectRenderingMeshGPU != NULL)
-    {
-      deformableObjectRenderingMeshGPU->SetUpTextures(SceneObject::MODULATE, SceneObject::USEMIPMAP);
-      deformableObjectRenderingMeshGPU->EnableTextures();
-    }
     deformableObjectRenderingMeshCPU->SetUpTextures(SceneObject::MODULATE, SceneObject::USEMIPMAP);
     deformableObjectRenderingMeshCPU->EnableTextures();
   }
 
-  // create a buffer used when searching for the 3D vertex closest to the click location
-  if (deformableObjectRenderingMeshGPU != NULL)
-    uClosestVertexBuffer = (double*) 
-      malloc (sizeof(double) * 3 * deformableObjectRenderingMeshGPU->Getn());
-
-  if (renderOnGPU)
-    deformableObjectRenderingMeshReduced = deformableObjectRenderingMeshGPU;
-  else
+  #ifdef USE_CG
+    // initialize the GPU rendering class for the deformable object
+    try
+    {
+      deformableObjectRenderingMeshGPU = new SceneObjectReducedGPU(deformableObjectFilename, renderingModalMatrix); // uses GPU to compute u=Uq
+      // create a buffer used when searching for the 3D vertex closest to the click location
+      uClosestVertexBuffer = (double*) malloc (sizeof(double) * 3 * deformableObjectRenderingMeshGPU->Getn());
+      
+      // prepare textures (if necessary)
+      if (enableTextures)
+      {
+        deformableObjectRenderingMeshGPU->SetUpTextures(SceneObject::MODULATE, SceneObject::USEMIPMAP);
+        deformableObjectRenderingMeshGPU->EnableTextures();
+      }
+    }
+    catch(int exceptionCode)
+    {
+      printf("Warning: unable to initialize GPU rendering for deformations (code: %d). Using CPU instead.\n", exceptionCode);
+      deformableObjectRenderingMeshGPU = NULL;
+      renderOnGPU = 0;
+    }
+    if (renderOnGPU)
+      deformableObjectRenderingMeshReduced = deformableObjectRenderingMeshGPU;
+    else
+      deformableObjectRenderingMeshReduced = deformableObjectRenderingMeshCPU;
+  #else
+    renderOnGPU = 0;
     deformableObjectRenderingMeshReduced = deformableObjectRenderingMeshCPU;
+  #endif
 
   deformableObjectRenderingMeshReduced->ResetDeformationToRest();
 
@@ -711,12 +722,12 @@ void initScene()
   else
     extraSceneGeometry = NULL;
 
+/*
   // compute lowest frequency of the system (smallest eigenvalue of K)
   double * K = (double*) malloc (sizeof(double) * r * r);
   double * zero = (double*) calloc (r, sizeof(double));
   stVKReducedStiffnessMatrix->Evaluate(zero, K);
 
-/*
   // find smallest eigenvalue of K
   Matrix<double> KM(r, r, K, false, false);
   Matrix<double> EigenVectors(r,r);
@@ -951,9 +962,13 @@ void plasticDeformationsEnabled_checkboxCallBack(int code)
 
 void renderOnGPU_checkBoxCallBack(int code)
 {
-  if (renderOnGPU && (deformableObjectRenderingMeshGPU != NULL))
+  if (renderOnGPU)
   {
+#ifdef USE_CG
     deformableObjectRenderingMeshReduced = deformableObjectRenderingMeshGPU;
+#else
+    printf("Error: sceneObjectReducedGPU not compiled. Install Nvidia CG to enable.");
+#endif
   }
   else
   {
@@ -1128,8 +1143,10 @@ int main(int argc, char* argv[])
   initScene();
 
   // disable the GPU UI switch if no GPU support for vertex texture fetches
-  if (deformableObjectRenderingMeshGPU == NULL)
-    renderOnGPU_checkbox->disable();
+  #ifdef USE_CG
+    if (deformableObjectRenderingMeshGPU == NULL)
+  #endif
+      renderOnGPU_checkbox->disable();
 
   glutMainLoop(); 
 

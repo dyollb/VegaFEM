@@ -1,14 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
- * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
- * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
+ * http://www.jernejbarbic.com/vega                                      *
+ *                                                                       *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
+ *           Doug L. James, Jovan Popovic                                *
+ *                                                                       *
+ * Funding: National Science Foundation, Link Foundation,                *
+ *          Singapore-MIT GAMBIT Game Lab,                               *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -30,7 +39,7 @@
 #include "matrixLAPACK.h"
 #include "matrixBLAS.h"
 
-#ifdef __APPLE__
+#if defined(VEGA_USE_ACCELERATE)
   #define DGETRF dgetrf_
   #define DGETRI dgetri_
   #define SGETRF sgetrf_
@@ -136,7 +145,7 @@ public:
 };
 
 template<class real>
-real * InverseMatrix(int m, real * mtx, real * output)
+real * InverseMatrix(int m, const real * mtx, real * output)
 {
   real * target = output;
   if (target == NULL)
@@ -190,7 +199,7 @@ public:
 };
 
 template<class real>
-real * PseudoInverseMatrix(int m, int n, real * mtx, real singularValueThreshold, int * rank_, real * output)
+real * PseudoInverseMatrix(int m, int n, const real * mtx, real singularValueThreshold, int * rank_, real * output)
 {
   real * A = (real*) malloc (sizeof(real) * m * n);
   memcpy(A, mtx, sizeof(real) * m * n);
@@ -370,7 +379,7 @@ public:
 };
 
 template<class real>
-real * MatrixLeastSquareSolve(int m, int n, int nRhs, real * mtx, real * b, real rcond, int * rank_, real * output)
+real * MatrixLeastSquareSolve(int m, int n, int nRhs, const real * mtx, const real * b, real rcond, int * rank_, real * output)
 {
   real * A = (real*) malloc (sizeof(real) * m * n);
   if (!A)
@@ -495,7 +504,7 @@ public:
 };
 
 template<class real>
-void MatrixLUSolve(int n, int nRhs, real * mtx, real * x, real * b)
+void MatrixLUSolve(int n, int nRhs, const real * mtx, real * x, const real * b)
 {
   real * A = (real*) malloc (sizeof(real) * n * n);
   if (!A)
@@ -807,12 +816,12 @@ void MatrixSVD(int m, int n, real * mtx, real * U, real * Sigma, real * VT)
   }
 }
 
-template float * InverseMatrix(int m, float * mtx, float * output);
-template double * InverseMatrix(int m, double * mtx, double * output);
-template float * PseudoInverseMatrix(int m, int n, float * mtx, float singularValueThreshold, int * rank, float * output);
-template double * PseudoInverseMatrix(int m, int n, double * mtx, double singularValueThreshold, int * rank, double * output);
-template float * MatrixLeastSquareSolve(int m, int n, int nRhs, float * mtx, float * b, float rcond, int * rank, float * output);
-template double * MatrixLeastSquareSolve(int m, int n, int nRhs, double * mtx, double * b, double rcond, int * rank, double * output);
+template float * InverseMatrix(int m, const float * mtx, float * output);
+template double * InverseMatrix(int m, const double * mtx, double * output);
+template float * PseudoInverseMatrix(int m, int n, const float * mtx, float singularValueThreshold, int * rank, float * output);
+template double * PseudoInverseMatrix(int m, int n, const double * mtx, double singularValueThreshold, int * rank, double * output);
+template float * MatrixLeastSquareSolve(int m, int n, int nRhs, const float * mtx, const float * b, float rcond, int * rank, float * output);
+template double * MatrixLeastSquareSolve(int m, int n, int nRhs, const double * mtx, const double * b, double rcond, int * rank, double * output);
 template void SymmetricMatrixEigenDecomposition(int m, float * mtx, float * Q, float * Lambda);
 template void SymmetricMatrixEigenDecomposition(int m, double * mtx, double * Q, double * Lambda);
 template void SymmetricMatrixGeneralEigenDecomposition(int m, float * mtx, float * mtx2, float * Q, float * Lambda);
@@ -821,6 +830,6 @@ template int MatrixEigenDecomposition(int m, float * mtx, float * EigenVectors, 
 template int MatrixEigenDecomposition(int m, double * mtx, double * EigenVectors, double * LambdaRe, double * LambdaIm);
 template void MatrixSVD(int m, int n, float * mtx, float * U, float * Sigma, float * VT);
 template void MatrixSVD(int m, int n, double * mtx, double * U, double * Sigma, double * VT);
-template void MatrixLUSolve(int n, int nRhs, float * mtx, float * x, float * b);
-template void MatrixLUSolve(int n, int nRhs, double * mtx, double * x, double * b);
+template void MatrixLUSolve(int n, int nRhs, const float * mtx, float * x, const float * b);
+template void MatrixLUSolve(int n, int nRhs, const double * mtx, double * x, const double * b);
 

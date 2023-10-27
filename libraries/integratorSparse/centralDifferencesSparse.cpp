@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
+ * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -32,7 +36,7 @@
 #include <string.h>
 #include <float.h>
 #include "performanceCounter.h"
-#include "insertRows.h"
+#include "constrainedDOFs.h"
 #include "centralDifferencesSparse.h"
 
 CentralDifferencesSparse::CentralDifferencesSparse(int numDOFs, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs, int * constrainedDOFs, double dampingMassCoef, double dampingStiffnessCoef, int tangentialDampingMode_, int numSolverThreads_): IntegratorBaseSparse(numDOFs, timestep, massMatrix_, forceModel_, numConstrainedDOFs, constrainedDOFs, dampingMassCoef, dampingStiffnessCoef), tangentialDampingMode(tangentialDampingMode_), numSolverThreads(numSolverThreads_), timestepIndex(0)
@@ -57,8 +61,7 @@ CentralDifferencesSparse::CentralDifferencesSparse(int numDOFs, double timestep,
 
   #ifdef PARDISO
     printf("Creating Pardiso solver for central differences.\n");
-    int positiveDefiniteSolver = 0;
-    pardisoSolver = new PardisoSolver(systemMatrix, numSolverThreads, positiveDefiniteSolver);
+    pardisoSolver = new PardisoSolver(systemMatrix, numSolverThreads, PardisoSolver::REAL_SYM_INDEFINITE);
   #endif
 
   #ifdef SPOOLES
@@ -114,7 +117,7 @@ void CentralDifferencesSparse::DecomposeSystemMatrix()
   //systemMatrix->SaveToMatlabFormat("system.mat");
   
   #ifdef PARDISO
-    int info = pardisoSolver->ComputeCholeskyDecomposition(systemMatrix);
+    int info = pardisoSolver->FactorMatrix(systemMatrix);
     if (info != 0)
     {
       printf("Error: PARDISO solver returned non-zero exit code %d.\n", info);
@@ -175,7 +178,7 @@ int CentralDifferencesSparse::DoTimestep()
 
   // now rhs contains the correct value
 
-  RemoveRows(r, rhsConstrained, rhs, numConstrainedDOFs, constrainedDOFs);
+  ConstrainedDOFs::RemoveDOFs(r, rhsConstrained, rhs, numConstrainedDOFs, constrainedDOFs);
 
   PerformanceCounter counterSystemSolveTime;
 
@@ -198,7 +201,7 @@ int CentralDifferencesSparse::DoTimestep()
     char solverString[16] = "PCG";
   #endif
 
-  InsertRows(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
+  ConstrainedDOFs::InsertDOFs(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
 
   counterSystemSolveTime.StopCounter();
   systemSolveTime = counterSystemSolveTime.GetElapsedTime();

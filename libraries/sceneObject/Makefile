@@ -5,17 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=SCENEOBJECT
 endif
 
-include ../../Makefile-headers/Makefile-header
 R ?= ../..
+include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-SCENEOBJECT_OBJECTS=sceneObject.o sceneObjectWithRestPosition.o sceneObject6DOF.o sceneObjectDeformable.o sceneObjectDeformable6DOF.o
+SCENEOBJECT_OBJECTS=sceneObject.o sceneObjectWithRestPosition.o sceneObject6DOF.o sceneObjectDeformable.o sceneObjectDeformable6DOF.o sceneGroundPlane.o
 ifneq ($(CG_LIBS),)
 SCENEOBJECT_OBJECTS+=sceneObjectDeformableGPU.o sceneObjectDeformableGPU6DOF.o
 endif
 
 # the libraries this library depends on
-SCENEOBJECT_LIBS=objMesh lighting minivector
+SCENEOBJECT_LIBS=objMesh lighting minivector imageIO
 ifneq ($(CG_LIBS),)
 SCENEOBJECT_LIBS+=objMeshGPUDeformer
 endif

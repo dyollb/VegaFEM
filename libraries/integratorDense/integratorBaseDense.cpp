@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
+ * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -26,13 +30,14 @@
  *                                                                       *
  *************************************************************************/
 
-#include "lapack-headers.h"
-#include "integratorBaseDense.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <cassert>
+#include "lapack-headers.h"
+#include "integratorBaseDense.h"
 #include "IPIVC.h"
 
 IntegratorBaseDense::IntegratorBaseDense(int r, double timestep, double * massMatrix, ReducedForceModel * reducedForceModel, double dampingMassCoef, double dampingStiffnessCoef) : IntegratorBase(r, timestep, dampingMassCoef, dampingStiffnessCoef), useStaticSolver(0), usePlasticDeformations(0), plasticThreshold2(DBL_MAX), plasticfq(NULL), totalfq(NULL)
@@ -62,12 +67,14 @@ IntegratorBaseDense::IntegratorBaseDense(int r, double timestep, double dampingM
   this->massMatrix = NULL;
   dampingMatrix = NULL;
   tangentStiffnessMatrix = NULL;
+  r2 = 0;
 
   forceAssemblyTime = systemSolveTime = 0.0;
 
   this->reducedForceModel = NULL;
 
   tangentStiffnessMatrixOffset = NULL;
+  dampingMatrixOffset = NULL;
   IPIV = NULL;
 
   memset(externalForces,0,sizeof(double) * r);
@@ -92,11 +99,13 @@ void IntegratorBaseDense::SetMassMatrix(double * massMatrix)
 
 void IntegratorBaseDense::SetTangentStiffnessMatrixOffset(double * tangentStiffnessMatrixOffset)
 {
+  assert (this->tangentStiffnessMatrixOffset);
   memcpy(this->tangentStiffnessMatrixOffset, tangentStiffnessMatrixOffset, sizeof(double) * r * r);
 }
 
 void IntegratorBaseDense::AddTangentStiffnessMatrixOffset(double * tangentStiffnessMatrixOffset)
 {
+  assert (this->tangentStiffnessMatrixOffset);
   int r2 = r * r;
   for(int i=0; i<r2; i++)
     (this->tangentStiffnessMatrixOffset)[i] += tangentStiffnessMatrixOffset[i];
@@ -104,16 +113,21 @@ void IntegratorBaseDense::AddTangentStiffnessMatrixOffset(double * tangentStiffn
 
 void IntegratorBaseDense::ClearTangentStiffnessMatrixOffset()
 {
+  if (this->tangentStiffnessMatrixOffset == NULL) 
+    return;
   memset(this->tangentStiffnessMatrixOffset, 0, sizeof(double) * r * r);
 }
 
 void IntegratorBaseDense::ClearDampingMatrixOffset()
 {
+  if (this->dampingMatrixOffset == NULL) 
+    return;
   memset(this->dampingMatrixOffset, 0, sizeof(double) * r * r);
 }
 
 void IntegratorBaseDense::AddDampingMatrixOffset(double * dampingMatrixOffset)
 {
+  assert (this->dampingMatrixOffset);
   int r2 = r * r;
   for(int i=0; i<r2; i++)
     (this->dampingMatrixOffset)[i] += dampingMatrixOffset[i];
@@ -162,8 +176,8 @@ int IntegratorBaseDense::SetState(double * q_, double * qvel_)
   // M * qaccel + C * qvel + R(q) = P_0 
   // assume P_0 = 0
   // i.e. M * qaccel = - C * qvel - R(q)
-
-  reducedForceModel->GetForceAndMatrix(q, internalForces, tangentStiffnessMatrix);
+  if (reducedForceModel != NULL)
+    reducedForceModel->GetForceAndMatrix(q, internalForces, tangentStiffnessMatrix);
 
   int r2 = r * r;
   for(int i=0; i<r2; i++)

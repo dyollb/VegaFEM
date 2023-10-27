@@ -1,24 +1,28 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "Large Modal Deformation Factory",                                    *
  * a pre-processing utility for model reduction of                       *
  * deformable objects undergoing large deformations.                     *
  *                                                                       *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -39,6 +43,8 @@
 #include "objMeshOffsetVoxels.h"
 #include "largeModalDeformationFactory.h"
 
+using namespace std;
+
 void MyFrame::OnVoxelize(wxCommandEvent& event)
 {
   char cubicMeshResolutionStringC[256];
@@ -56,8 +62,9 @@ void MyFrame::OnVoxelize(wxCommandEvent& event)
        wxALIGN_CENTER, _T( "staticText"));
 
   int maxResolution = 16384;
+  int resCtlSize = 90;
   wxSpinCtrl * resolutionControl = new wxSpinCtrl(dlg, -1, 
-      wxEmptyString, wxDefaultPosition, wxSize(70,-1), wxSP_ARROW_KEYS, 
+      wxEmptyString, wxDefaultPosition, wxSize(resCtlSize,-1), wxSP_ARROW_KEYS, 
       1, maxResolution, uiState.cubicMeshResolution, _T("wxSpinCtrl"));
   resolutionControl->SetValue(uiState.cubicMeshResolution);
 
@@ -346,11 +353,9 @@ void MyFrame::OnMaterialProperties(wxCommandEvent & event)
   if (precomputationState.simulationMesh->getNumMaterials() > 1)
   {
     wxMessageDialog * confirmationDialog = new wxMessageDialog
-      (this, _T(
-        "Warning: existing simulation mesh has more than one material. "
-        "This dialog can only edit one material; other materials will be deleted. "
-        "Do you want to continue?"
-        ),
+      (this, _T("Warning: existing simulation mesh has more than one material. ")
+      _T("This dialog can only edit one material; other materials will be deleted. ")
+      _T("Do you want to continue?"),
       _T("More than one material encountered"), 
       wxYES_NO | wxICON_QUESTION);
 

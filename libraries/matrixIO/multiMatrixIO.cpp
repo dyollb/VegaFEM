@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "matrixIO" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC       *
+ * "matrixIO" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -35,16 +39,10 @@
 #include <string.h>
 #include "multiMatrixIO.h"
 
-// for faster parallel loading of multimatrix binary files, enable the -fopenmp -DUSE_OPENMP macro line in the Makefile-header file (see also documentation)
-
-#ifdef USE_OPENMP
-  #include <omp.h>
-#endif
-
 int MultiMatrixIO::Save(const char * filename, int numMatrices, int * m, int * n, double ** matrices)
 {
   FILE * fout = fopen(filename, "wb");
-  if (fout == NULL)
+  if (fout == nullptr)
   {
     printf("Error in MultiMatrixIO::Save: cannot open %s for writing.\n", filename);
     return 1;
@@ -73,8 +71,12 @@ int MultiMatrixIO::Save(const char * filename, int numMatrices, int * m, int * n
 
 int MultiMatrixIO::Load(const char * filename, int * numMatrices, int ** m, int ** n, double *** matrices)
 {
+  *m = nullptr;
+  *n = nullptr;
+  *matrices = nullptr;
+
   FILE * fin = fopen(filename, "rb");
-  if (fin == NULL)
+  if (fin == nullptr)
   {
     printf("Error in MultiMatrixIO::Load: cannot open %s for reading.\n", filename);
     return 1;
@@ -85,6 +87,7 @@ int MultiMatrixIO::Load(const char * filename, int * numMatrices, int ** m, int 
   if (items != 1)
   {
     printf("Error in MultiMatrixIO::Load: mismatch in the number of matrices.\n");
+    fclose(fin);
     return 1;
   }
 
@@ -98,6 +101,11 @@ int MultiMatrixIO::Load(const char * filename, int * numMatrices, int ** m, int 
     if (items != 1)
     {
       printf("Error in MultiMatrixIO::Load: mismatch in the number of matrices.\n");
+      free(*m);
+      *m = nullptr;
+      free(*n);
+      *n = nullptr;
+      fclose(fin);
       return 1;
     }
 
@@ -105,44 +113,46 @@ int MultiMatrixIO::Load(const char * filename, int * numMatrices, int ** m, int 
     if (items != 1)
     {
       printf("Error in MultiMatrixIO::Load: mismatch in the number of matrices.\n");
+      free(*m);
+      *m = nullptr;
+      free(*n);
+      *n = nullptr;
+      fclose(fin);
       return 1;
     }
   }
 
   // allocate memory for matrices
   (*matrices) = (double **) malloc (sizeof(double*) * *numMatrices);
-  unsigned int totalBytes = 0;
-  unsigned int * offset = (unsigned int *) malloc (sizeof(unsigned int) * *numMatrices);
-  offset[0] = 0;
   for(int i=0; i<*numMatrices; i++)
   {
     int numEntries = (*m)[i] * (*n)[i];
     if (numEntries > 0)
       (*matrices)[i] = (double *) malloc(sizeof(double) * numEntries);
     else
-      (*matrices)[i] = NULL;
-    offset[i] = totalBytes;
-    totalBytes += sizeof(double) * numEntries;
+      (*matrices)[i] = nullptr;
   }
 
-  // read the entire block of matrices
-  unsigned char * mem = (unsigned char *) malloc (sizeof(unsigned char) * totalBytes);
-  items = fread(mem, sizeof(unsigned char), totalBytes, fin);
-  if (items != totalBytes)
+  // read the each matrices
+  for(int i=0; i<*numMatrices; i++)
   {
-    printf("Error in MultiMatrixIO::Load: invalid number of bytes.\n");
-    return 1;
+    unsigned int matrixSize = (*m)[i] * (*n)[i];
+    items = fread((*matrices)[i], sizeof(double), matrixSize, fin);
+    if (items != matrixSize)
+    {
+      printf("Error in MultiMatrixIO::Load: invalid number of bytes.\n");
+      free(*m);
+      *m = nullptr;
+      free(*n);
+      *n = nullptr;
+      for(int i = 0; i < *numMatrices; i++) { free((*matrices)[i]); }
+      free(*matrices);
+      *matrices = nullptr;
+      fclose(fin);
+      return 1;
+    }
   }
   fclose(fin);
-
-  #ifdef USE_OPENMP
-    #pragma omp parallel for
-  #endif
-  for(int i=0; i<*numMatrices; i++)
-    memcpy((*matrices)[i], &mem[offset[i]], sizeof(double) * (*m)[i] * (*n)[i]);
-
-  free(offset);
-  free(mem);
 
   return 0;
 }

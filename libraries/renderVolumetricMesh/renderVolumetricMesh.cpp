@@ -1,20 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "renderVolumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT,    *
- *                                                          2015 USC     *
+ *                                                          2018 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -28,8 +32,9 @@
  *************************************************************************/
 
 #include <float.h>
-
 #include "openGL-headers.h"
+#include "printBitmap.h"
+#include "openGLHelper.h"
 #include "renderVolumetricMesh.h"
 #include "volumetricMeshENuMaterial.h"
 #include "cubicMesh.h"
@@ -43,6 +48,12 @@ using namespace std;
 
 RenderVolumetricMesh::RenderVolumetricMesh()
 {
+  maxE = DBL_MAX;
+  maxnu = 0.5;
+  maxDensity = DBL_MAX;
+  minE = 0;
+  minnu = 0;
+  minDensity = 0;
   renderingMode = RENDERVOLUMETRICMESH_RENDERINGMODE_DISCRETECOLORS;
 }
 
@@ -100,10 +111,10 @@ void RenderVolumetricMesh::DetermineMaxMin(VolumetricMesh * volumetricMesh)
 
 void RenderVolumetricMesh::RenderTet(VolumetricMesh * volumetricMesh, int el, int wireframe)
 {
-  Vec3d v0 = *(volumetricMesh->getVertex(el,0));
-  Vec3d v1 = *(volumetricMesh->getVertex(el,1));
-  Vec3d v2 = *(volumetricMesh->getVertex(el,2));
-  Vec3d v3 = *(volumetricMesh->getVertex(el,3));
+  Vec3d v0 = volumetricMesh->getVertex(el,0);
+  Vec3d v1 = volumetricMesh->getVertex(el,1);
+  Vec3d v2 = volumetricMesh->getVertex(el,2);
+  Vec3d v3 = volumetricMesh->getVertex(el,3);
 
   #define RENDERVTX(i) glVertex3f(v##i[0], v##i[1], v##i[2]);
   if (wireframe)
@@ -150,16 +161,24 @@ void RenderVolumetricMesh::RenderTet(VolumetricMesh * volumetricMesh, int el, in
   }
 }
 
+void RenderVolumetricMesh::RenderElement(VolumetricMesh * volumetricMesh, int el, int wireframe)
+{
+  if (volumetricMesh->getElementType() == CubicMesh::elementType())
+    RenderCube(volumetricMesh, el, wireframe);
+  else if (volumetricMesh->getElementType() == TetMesh::elementType())
+    RenderTet(volumetricMesh, el, wireframe);
+}
+
 void RenderVolumetricMesh::RenderCube(VolumetricMesh * volumetricMesh, int el, int wireframe)
 {
   // move to vertex 0
   glPushMatrix();
-  Vec3d v0 = *(volumetricMesh->getVertex(el,0));
+  Vec3d v0 = volumetricMesh->getVertex(el,0);
   glTranslated(v0[0],v0[1],v0[2]);
 
-  Vec3d v1 = *(volumetricMesh->getVertex(el,1));
-  Vec3d v3 = *(volumetricMesh->getVertex(el,3));
-  Vec3d v4 = *(volumetricMesh->getVertex(el,4));
+  Vec3d v1 = volumetricMesh->getVertex(el,1);
+  Vec3d v3 = volumetricMesh->getVertex(el,3);
+  Vec3d v4 = volumetricMesh->getVertex(el,4);
     
   Vec3d axisX = norm(v1-v0);
   Vec3d axisY = norm(v3-v0);
@@ -185,66 +204,6 @@ void RenderVolumetricMesh::RenderCube(VolumetricMesh * volumetricMesh, int el, i
   glPopMatrix();
 }
 
-void RenderVolumetricMesh::JetColorMap(double x, double color[3])
-{
-  double a; // alpha
-
-  if (x < 0)
-  {
-    color[0] = 0;
-    color[1] = 0;
-    color[2] = 0;
-    return;
-  } 
-  else if (x < 0.125) 
-  {
-    a = x / 0.125;
-    color[0] = 0;
-    color[1] = 0;
-    color[2] = 0.5 + 0.5 * a;
-    return;
-  }
-  else if (x < 0.375) 
-  {
-    a = (x - 0.125) / 0.25;
-    color[0] = 0;
-    color[1] = a;
-    color[2] = 1;
-    return;
-  }
-  else if (x < 0.625) 
-  {         
-    a = (x - 0.375) / 0.25;
-    color[0] = a;
-    color[1] = 1;
-    color[2] = 1 - a;
-    return;
-  }     
-  else if (x < 0.875) 
-  {
-    a = (x - 0.625) / 0.25;
-    color[0] = 1;
-    color[1] = 1 - a;
-    color[2] = 0;
-    return;
-  }     
-  else if (x <= 1.0) 
-  {
-    a = (x - 0.875) / 0.125;
-    color[0] = 1 - 0.5 * a;
-    color[1] = 0;
-    color[2] = 0;
-    return;
-  }
-  else
-  {
-    color[0] = 1;
-    color[1] = 1;
-    color[2] = 1;
-    return;
-  }
-}
-
 void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe, double * u)
 {
   glDisable(GL_LIGHTING);
@@ -258,29 +217,21 @@ void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe
   if (renderingMode == RENDERVOLUMETRICMESH_RENDERINGMODE_DISCRETECOLORS)
   {
     if (volumetricMesh->getNumMaterials() == 0)
-    {
       printf("Error: discrete color rendering mode in renderVolumetricMesh called with zero materials.\n");
-    }
 
     map<int,int> actualMaterials;
     for(int ss=0; ss < volumetricMesh->getNumRegions(); ss++)
     {
       int materialIndex = volumetricMesh->getRegion(ss)->getMaterialIndex();
       int setIndex = volumetricMesh->getRegion(ss)->getSetIndex();
-      VolumetricMesh::Set * elementSet = volumetricMesh->getSet(setIndex);
+      const VolumetricMesh::Set * elementSet = volumetricMesh->getSet(setIndex);
       int numElements = elementSet->getNumElements();
 
       map<int,int> :: iterator iter = actualMaterials.find(materialIndex);
-      if (iter == actualMaterials.end())
-      {
-        // new material
+      if (iter == actualMaterials.end()) // new material
         actualMaterials.insert(make_pair(materialIndex, numElements));
-      }
-      else
-      {
-        // existing material
+      else // existing material
         iter->second += numElements;
-      }
     }
     int numActualMaterials = (int)actualMaterials.size();
 
@@ -300,7 +251,7 @@ void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe
     double multiplicator = (numActualMaterials == 1 ? 1.0 : 1.0 / (numActualMaterials - 1));
     for(int ss=0; ss < volumetricMesh->getNumRegions(); ss++)
     {
-      VolumetricMesh::Region * region = volumetricMesh->getRegion(ss);
+      const VolumetricMesh::Region * region = volumetricMesh->getRegion(ss);
 
       int materialIndex = region->getMaterialIndex(); 
       double color[3];
@@ -311,7 +262,7 @@ void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe
       color[2] = gray;
 
       int setIndex = region->getSetIndex(); 
-      VolumetricMesh::Set * elementSet = volumetricMesh->getSet(setIndex);
+      const VolumetricMesh::Set * elementSet = volumetricMesh->getSet(setIndex);
       set<int> elements;
       elementSet->getElements(elements);
 
@@ -334,9 +285,9 @@ void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe
         }
         else
         {
-          #define VER(j) (*volumetricMesh->getVertex(el,j))[0] + u[3*volumetricMesh->getVertexIndex(el, j)+0],\
-		         (*volumetricMesh->getVertex(el,j))[1] + u[3*volumetricMesh->getVertexIndex(el, j)+1],\
-		         (*volumetricMesh->getVertex(el,j))[2] + u[3*volumetricMesh->getVertexIndex(el, j)+2]
+          #define VER(j) volumetricMesh->getVertex(el,j)[0] + u[3*volumetricMesh->getVertexIndex(el, j)+0],\
+		         volumetricMesh->getVertex(el,j)[1] + u[3*volumetricMesh->getVertexIndex(el, j)+1],\
+		         volumetricMesh->getVertex(el,j)[2] + u[3*volumetricMesh->getVertexIndex(el, j)+2]
           if (wireframe)
           {
             if (meshType == 1)
@@ -424,9 +375,9 @@ void RenderVolumetricMesh::Render(VolumetricMesh * volumetricMesh, int wireframe
       }
       else
       {
-        #define VERA(j) (*volumetricMesh->getVertex(i,j))[0] + u[3*volumetricMesh->getVertexIndex(i, j)+0],\
-                        (*volumetricMesh->getVertex(i,j))[1] + u[3*volumetricMesh->getVertexIndex(i, j)+1],\
-	                (*volumetricMesh->getVertex(i,j))[2] + u[3*volumetricMesh->getVertexIndex(i, j)+2]
+        #define VERA(j) volumetricMesh->getVertex(i,j)[0] + u[3*volumetricMesh->getVertexIndex(i, j)+0],\
+                        volumetricMesh->getVertex(i,j)[1] + u[3*volumetricMesh->getVertexIndex(i, j)+1],\
+	                volumetricMesh->getVertex(i,j)[2] + u[3*volumetricMesh->getVertexIndex(i, j)+2]
 
         if (wireframe)
         {
@@ -469,9 +420,9 @@ void RenderVolumetricMesh::RenderWireframeDeformation(VolumetricMesh * volumetri
 void RenderVolumetricMesh::RenderVertexDeformed(VolumetricMesh * volumetricMesh, int ver, double * U)
 {
   glBegin(GL_POINTS);
-    glVertex3f((*volumetricMesh->getVertex(ver))[0]+U[3*(ver)+0],
-	       (*volumetricMesh->getVertex(ver))[1]+U[3*(ver)+1],
-               (*volumetricMesh->getVertex(ver))[2]+U[3*(ver)+2]);
+    glVertex3f(volumetricMesh->getVertex(ver)[0]+U[3*(ver)+0],
+	       volumetricMesh->getVertex(ver)[1]+U[3*(ver)+1],
+               volumetricMesh->getVertex(ver)[2]+U[3*(ver)+2]);
   glEnd();
 }
 
@@ -482,8 +433,8 @@ void RenderVolumetricMesh::RenderVertices(VolumetricMesh * volumetricMesh)
   glBegin(GL_POINTS);
   for (i=0; i < volumetricMesh->getNumVertices(); i++)
   {
-     Vec3d * vertex = volumetricMesh->getVertex(i);
-     glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+     Vec3d vertex = volumetricMesh->getVertex(i);
+     glVertex3f(vertex[0],vertex[1],vertex[2]);
   }
   glEnd();
 }
@@ -496,8 +447,8 @@ void RenderVolumetricMesh::RenderVertices
   std::set<int> :: iterator iter;
   for(iter = vertices->begin(); iter != vertices->end(); iter++)
   {
-    Vec3d * vertex = volumetricMesh->getVertex(*iter + offset);
-    glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+    Vec3d vertex = volumetricMesh->getVertex(*iter + offset);
+    glVertex3f(vertex[0],vertex[1],vertex[2]);
   }
   glEnd();
 }
@@ -509,8 +460,8 @@ void RenderVolumetricMesh::RenderVertices(VolumetricMesh * volumetricMesh,
   int offset = (oneIndexed ? -1 : 0);
   for (int i=0; i < numVertices; i++)
   {
-    Vec3d * vertex = volumetricMesh->getVertex(vertices[i] + offset);
-    glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+    Vec3d vertex = volumetricMesh->getVertex(vertices[i] + offset);
+    glVertex3f(vertex[0],vertex[1],vertex[2]);
   }
   glEnd();
 }
@@ -521,8 +472,8 @@ void RenderVolumetricMesh::SelectRenderVertices(VolumetricMesh * volumetricMesh)
   {
     glLoadName(i+1);
     glBegin(GL_POINTS);
-      Vec3d * vertex = volumetricMesh->getVertex(i);
-      glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+      Vec3d vertex = volumetricMesh->getVertex(i);
+      glVertex3f(vertex[0],vertex[1],vertex[2]);
     glEnd();
   }
 }
@@ -532,8 +483,8 @@ void RenderVolumetricMesh::DrawSelectedPoints(VolumetricMesh * volumetricMesh, i
   glBegin(GL_POINTS);
   for (int i=0; i < numSelectedVertices; i++)
   {
-    Vec3d * vertex = volumetricMesh->getVertex(selectedVertices[i]-1);
-    glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+    Vec3d vertex = volumetricMesh->getVertex(selectedVertices[i]-1);
+    glVertex3f(vertex[0],vertex[1],vertex[2]);
   }
   glEnd();
 }
@@ -545,8 +496,8 @@ void RenderVolumetricMesh::DrawUnselectedPoints(VolumetricMesh * volumetricMesh,
   {
     if (selectionArray[i+1] != 0)
       continue;
-    Vec3d * vertex = volumetricMesh->getVertex(i);
-    glVertex3f((*vertex)[0],(*vertex)[1],(*vertex)[2]);
+    Vec3d vertex = volumetricMesh->getVertex(i);
+    glVertex3f(vertex[0],vertex[1],vertex[2]);
   }
   glEnd();
 }
@@ -603,122 +554,20 @@ void RenderVolumetricMesh::RenderVertexLabels(VolumetricMesh * volumetricMesh, i
   // labels are printed out in the range 1... , not 0...
   for (int i=start; i< end; i++)
   {
-    Vec3d * vertex = volumetricMesh->getVertex(i);
-    print_bitmap_integer((*vertex)[0],(*vertex)[1],(*vertex)[2],i+1);
+    Vec3d vertex = volumetricMesh->getVertex(i);
+    print_bitmap_integer(vertex[0],vertex[1],vertex[2],i+1);
   }
 }
 
-void RenderVolumetricMesh::UnitCube()
-{
-  glBegin(GL_TRIANGLES);
-
-  glNormal3f(0,-1,0);  
-
-  glVertex3f(0,0,0); // front
-  glVertex3f(1,0,0);
-  glVertex3f(1,0,1);
-
-  glVertex3f(0,0,0);
-  glVertex3f(1,0,1);
-  glVertex3f(0,0,1);
-
-  glNormal3f(0,1,0);  
-
-  glVertex3f(0,1,0); // back
-  glVertex3f(1,1,1);
-  glVertex3f(1,1,0);
-
-  glVertex3f(0,1,1);
-  glVertex3f(1,1,1);
-  glVertex3f(0,1,0);
-
-  glNormal3f(1,0,0);  
-
-  glVertex3f(1,0,0); // right
-  glVertex3f(1,1,0);
-  glVertex3f(1,1,1);
-
-  glVertex3f(1,0,0);
-  glVertex3f(1,1,1);
-  glVertex3f(1,0,1);
-
-  glNormal3f(-1,0,0);  
-
-  glVertex3f(0,0,0); // left
-  glVertex3f(0,1,1);
-  glVertex3f(0,1,0);
-
-  glVertex3f(0,0,1);
-  glVertex3f(0,1,1);
-  glVertex3f(0,0,0);
-
-  glNormal3f(0,0,1);  
-
-  glVertex3f(0,0,1); // top
-  glVertex3f(1,0,1);
-  glVertex3f(1,1,1);
-
-  glVertex3f(0,0,1);
-  glVertex3f(1,1,1);
-  glVertex3f(0,1,1);
-
-  glNormal3f(0,0,-1);  
-
-  glVertex3f(0,0,0); // bottom
-  glVertex3f(1,1,0);
-  glVertex3f(1,0,0);
-
-  glVertex3f(0,1,0);
-  glVertex3f(1,1,0);
-  glVertex3f(0,0,0);
-
-  glEnd();
-}
-
-void RenderVolumetricMesh::UnitCubeWireframe()
-{
-  glBegin(GL_LINES); 
-    glVertex3f(0,0,0);
-    glVertex3f(1,0,0);
-    glVertex3f(0,1,0);
-    glVertex3f(1,1,0);
-    glVertex3f(0,0,0);
-    glVertex3f(0,1,0);
-    glVertex3f(1,0,0);
-    glVertex3f(1,1,0);
-
-    glVertex3f(0,0,1);
-    glVertex3f(1,0,1);
-    glVertex3f(0,1,1);
-    glVertex3f(1,1,1);
-    glVertex3f(0,0,1);
-    glVertex3f(0,1,1);
-    glVertex3f(1,0,1);
-    glVertex3f(1,1,1);
-
-    glVertex3f(0,0,0);
-    glVertex3f(0,0,1);
-
-    glVertex3f(0,1,0);
-    glVertex3f(0,1,1);
-
-    glVertex3f(1,0,0);
-    glVertex3f(1,0,1);
-
-    glVertex3f(1,1,0);
-    glVertex3f(1,1,1);
-  glEnd();
-}
-
 void RenderVolumetricMesh::CubeDeformable(double u0x,double u0y,double u0z,
-					double u1x,double u1y,double u1z,
-					double u2x,double u2y,double u2z,
-					double u3x,double u3y,double u3z,
-					double u4x,double u4y,double u4z,
-					double u5x,double u5y,double u5z,
-					double u6x,double u6y,double u6z,
-					double u7x,double u7y,double u7z
-					)
+    double u1x,double u1y,double u1z,
+    double u2x,double u2y,double u2z,
+    double u3x,double u3y,double u3z,
+    double u4x,double u4y,double u4z,
+    double u5x,double u5y,double u5z,
+    double u6x,double u6y,double u6z,
+    double u7x,double u7y,double u7z
+)
 {
   glBegin(GL_TRIANGLES);
 
@@ -786,14 +635,14 @@ void RenderVolumetricMesh::CubeDeformable(double u0x,double u0y,double u0z,
 }
 
 void RenderVolumetricMesh::CubeWireframeDeformable(double u0x,double u0y,double u0z,
-    			double u1x,double u1y,double u1z,
-			double u2x,double u2y,double u2z,
-			double u3x,double u3y,double u3z,
-			double u4x,double u4y,double u4z,
-			double u5x,double u5y,double u5z,
-			double u6x,double u6y,double u6z,
-			double u7x,double u7y,double u7z
-					)
+    double u1x,double u1y,double u1z,
+    double u2x,double u2y,double u2z,
+    double u3x,double u3y,double u3z,
+    double u4x,double u4y,double u4z,
+    double u5x,double u5y,double u5z,
+    double u6x,double u6y,double u6z,
+    double u7x,double u7y,double u7z
+)
 {
   glBegin(GL_LINES); 
     glVertex3f(u0x,u0y,u0z);
@@ -829,10 +678,10 @@ void RenderVolumetricMesh::CubeWireframeDeformable(double u0x,double u0y,double 
 }
 
 void RenderVolumetricMesh::TetDeformable(double u0x,double u0y,double u0z,
-					 double u1x,double u1y,double u1z,
-					 double u2x,double u2y,double u2z,
-					 double u3x,double u3y,double u3z
-					)
+    double u1x,double u1y,double u1z,
+    double u2x,double u2y,double u2z,
+    double u3x,double u3y,double u3z
+)
 {
   #define RENDERVTXALT(i) glVertex3f(u##i##x, u##i##y, u##i##z);
   glBegin(GL_TRIANGLES);
@@ -855,10 +704,10 @@ void RenderVolumetricMesh::TetDeformable(double u0x,double u0y,double u0z,
 }
 
 void RenderVolumetricMesh::TetWireframeDeformable(double u0x,double u0y,double u0z,
-					 double u1x,double u1y,double u1z,
-					 double u2x,double u2y,double u2z,
-					 double u3x,double u3y,double u3z
-					)
+    double u1x,double u1y,double u1z,
+    double u2x,double u2y,double u2z,
+    double u3x,double u3y,double u3z
+)
 {
   glBegin(GL_LINES);
     RENDERVTXALT(0);

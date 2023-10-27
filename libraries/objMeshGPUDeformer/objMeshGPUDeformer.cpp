@@ -1,20 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "objMeshGPUDeformer" library , Copyright (C) 2007 CMU, 2009 MIT,      *
- *                                                        2015 USC       *
+ *                                                        2018 USC       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -42,7 +46,7 @@
   #define GL_GLEXT_PROTOTYPES 1
 #endif
 
-#if defined(linux)
+#if defined(linux) || defined(__linux__)
   GLAPI void APIENTRY glDeleteBuffersARB (GLsizei, const GLuint *);
   GLAPI void APIENTRY glBindBufferARB (GLenum, GLuint);
   GLAPI void APIENTRY glGenBuffersARB (GLsizei, GLuint *);
@@ -52,6 +56,8 @@
 #ifdef OBJMESHGPUDEFORMER_USING_VBOS
   #include "vbo.h"
 #endif
+
+using namespace std;
 
 ObjMeshGPUDeformer::ObjMeshGPUDeformer()
 {
@@ -527,8 +533,7 @@ void ObjMeshGPUDeformer::RenderEdges()
 
       glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, vboEdgesID[3*groupNo+2]);
 
-      int numGroupEdges = 3 * numGroupTriangles[groupNo];
-      glDrawElements(GL_LINES, 2 * numGroupEdges, GL_UNSIGNED_INT, 0);
+      glDrawElements(GL_LINES, 2 * numGroupEdges[groupNo], GL_UNSIGNED_INT, 0);
     }
 
     // unbind VBOs
@@ -764,13 +769,14 @@ void ObjMeshGPUDeformer::MakeDisplayListsEdges()
     displayListEdgesStart = glGenLists(numGroups);
   #endif
 
+  vector<float> vtxBuffer, stBuffer;
+  vector<GLuint> indexBuffer;
+  numGroupEdges.resize(numGroups);
   for(int groupNo=0; groupNo<numGroups; groupNo++)
   {
-    int numGroupEdges = 3 * numGroupTriangles[groupNo];
-    float * vtxBuffer = (float*) malloc (sizeof(float) * 6 * numGroupEdges);
-    float * stBuffer = (float*) malloc (sizeof(float) * 4 * numGroupEdges);
-    GLuint * indexBuffer = (GLuint*) malloc (sizeof(GLuint) * 2 * numGroupEdges);
-
+    vtxBuffer.clear();
+    stBuffer.clear();
+    indexBuffer.clear();
     const ObjMesh::Group * groupHandle = mesh->getGroupHandle(groupNo);
     int edgeCount = 0;
 
@@ -788,44 +794,42 @@ void ObjMeshGPUDeformer::MakeDisplayListsEdges()
           int vertexIndex = vertex->getPositionIndex();
           Vec3d pos = mesh->getPosition(*vertex);
           for (int dof=0; dof<3; dof++)
-            vtxBuffer[6*edgeCount + 3*vtx + dof] = pos[dof];
+            vtxBuffer.push_back(pos[dof]);
 
           float s = gpgpuVertexTextureCoordinates[2*vertexIndex+0];
           float t = gpgpuVertexTextureCoordinates[2*vertexIndex+1];
-          float st[2] = {s, t};
-
-          for (int dof=0; dof<2; dof++)
-            stBuffer[4*edgeCount + 2*vtx + dof] = st[dof];
-
-          for (int dof=0; dof<2; dof++)
-            indexBuffer[2 * edgeCount + dof] = 2 * edgeCount + dof;
+          stBuffer.push_back(s);
+          stBuffer.push_back(t);
         }
+        indexBuffer.push_back(2 * edgeCount + 0);
+        indexBuffer.push_back(2 * edgeCount + 1);
        
         edgeCount++;
       }
     }
+    numGroupEdges[groupNo] = edgeCount;
 
     #ifdef OBJMESHGPUDEFORMER_USING_VBOS
       glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboEdgesID[3*groupNo+0]);
-      glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof(float) * 6 * numGroupEdges, vtxBuffer, GL_STATIC_DRAW_ARB);
+      glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof(float) * 6 * edgeCount, vtxBuffer.data(), GL_STATIC_DRAW_ARB);
 
       glBindBufferARB(GL_ARRAY_BUFFER_ARB, vboEdgesID[3*groupNo+1]);
-      glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof(float) * 4 * numGroupEdges, stBuffer, GL_STATIC_DRAW_ARB);
+      glBufferDataARB(GL_ARRAY_BUFFER_ARB, sizeof(float) * 4 * edgeCount, stBuffer.data(), GL_STATIC_DRAW_ARB);
 
       glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB, vboEdgesID[3*groupNo+2]); 
-      glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, sizeof(GLuint) * 2 * numGroupEdges, indexBuffer, GL_STATIC_DRAW_ARB);
+      glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, sizeof(GLuint) * 2 * edgeCount, indexBuffer.data(), GL_STATIC_DRAW_ARB);
     #else
       PrintGLerror("before starting a new edge list");
       glNewList(displayListEdgesStart + groupNo, GL_COMPILE);
 
       glEnableClientState(GL_VERTEX_ARRAY);
-      glVertexPointer(3, GL_FLOAT, 0, vtxBuffer);
+      glVertexPointer(3, GL_FLOAT, 0, vtxBuffer.data());
 
       glClientActiveTextureARB(GL_TEXTURE0_ARB); 
-      glTexCoordPointer(2, GL_FLOAT, 0, stBuffer); 
+      glTexCoordPointer(2, GL_FLOAT, 0, stBuffer.data()); 
       glEnableClientState(GL_TEXTURE_COORD_ARRAY); 
 
-      glDrawElements(GL_LINES, 2 * numGroupEdges, GL_INT, indexBuffer);
+      glDrawElements(GL_LINES, 2 * edgeCount, GL_INT, indexBuffer.data());
 
       glDisableClientState(GL_VERTEX_ARRAY);
       glClientActiveTextureARB(GL_TEXTURE0_ARB); 
@@ -833,10 +837,6 @@ void ObjMeshGPUDeformer::MakeDisplayListsEdges()
 
       glEndList();    
     #endif
-
-    free(indexBuffer);
-    free(stBuffer);
-    free(vtxBuffer);
   }
 
   #ifdef OBJMESHGPUDEFORMER_USING_VBOS
@@ -877,22 +877,47 @@ void ObjMeshGPUDeformer::ReadBack_u(double * u)
 void ObjMeshGPUDeformer::DeleteCGShaders()
 {
   if (VertexPass2Program) 
+  {
+    #ifndef __APPLE__
+      cgGLUnloadProgram(VertexPass2Program);
+    #endif
     cgDestroyProgram(VertexPass2Program);
+  }
   
   if (VertexPass2ProgramShadow)
+  {
+    #ifndef __APPLE__
+      cgGLUnloadProgram(VertexPass2ProgramShadow);
+    #endif
     cgDestroyProgram(VertexPass2ProgramShadow);
+  }
 
   //if (VertexPass2ProgramDeformedNormals)
     //cgDestroyProgram(VertexPass2ProgramDeformedNormals);
 
-  if (VertexPass2ProgramPoints) 
+  if (VertexPass2ProgramPoints)
+  {
+    #ifndef __APPLE__
+      cgGLUnloadProgram(VertexPass2ProgramPoints);
+    #endif
     cgDestroyProgram(VertexPass2ProgramPoints);
+  }
     
   if (VertexPass2ProgramEdges)
+  {
+    #ifndef __APPLE__
+      cgGLUnloadProgram(VertexPass2ProgramEdges);
+    #endif
     cgDestroyProgram(VertexPass2ProgramEdges);
+  }
 
   if (FragmentPass2Program)
+  {
+    #ifndef __APPLE__
+      cgGLUnloadProgram(FragmentPass2Program);
+    #endif
     cgDestroyProgram(FragmentPass2Program);
+  }
     
   if (Context)
     cgDestroyContext(Context);

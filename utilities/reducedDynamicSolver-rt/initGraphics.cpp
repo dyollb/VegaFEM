@@ -1,24 +1,28 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "Reduced deformable dynamics" real-time driver application.           *
  * Uses model reduction to rapidly simulate deformable objects           *
  * undergoing large deformations.                                        *
  *                                                                       *
- * Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                            *
+ * Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                            *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -36,13 +40,12 @@
    StVK simulation.
 */
 
-#include "initGraphics.h"
 #include "macros.h"
+#include "initGraphics.h"
 
 extern void displayFunction(void);
 extern void idleFunction(void);
 extern void reshape(int,int);
-extern void handleMenu(int);
 extern void keyboardFunction(unsigned char key, int x, int y);
 extern void mouseButtonActivityFunction(int button, int state, int x, int y);
 extern void mouseMotionFunction(int x, int y);
@@ -90,8 +93,6 @@ void initCamera(double cameraRadius,
 	     1.0 * cameraLongitude / 360 * (2*PI), 
              1.0 * cameraLattitude / 360 * (2*PI), 
              focusPos,  upPos, 0.05, camera2WorldScalingFactor); 
-
-  (*camera)->SetOrigin(focusPos); // focusPos is zero
 }
 
 // Sets up graphics pipeline

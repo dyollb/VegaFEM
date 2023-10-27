@@ -1,21 +1,25 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "Interactive deformable object simulator" driver application,         *
- *  Copyright (C) 2007 CMU, 2009 MIT, 2015 USC                           *
+ *  Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                           *
  *                                                                       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Fun Shing Sin, Daniel Schroeder          *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This utility is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -63,7 +67,7 @@ Supported materials:
 #include <float.h>
 using namespace std;
 
-#ifdef WIN32
+#if defined(WIN32) || defined(_WIN32)
   #include <windows.h>
 #endif
 
@@ -75,47 +79,55 @@ using namespace std;
 #include "initGraphics.h"
 #include "sceneObjectDeformable.h"
 #include "performanceCounter.h"
+
+#include "volumetricMeshLoader.h"
 #include "tetMesh.h"
+
+#include "StVKElementABCDLoader.h"
 #include "StVKCubeABCD.h"
 #include "StVKTetABCD.h"
 #include "StVKTetHighMemoryABCD.h"
+#include "StVKFEM.h"
+#include "StVKStencilForceModel.h"
+
 #include "implicitBackwardEulerSparse.h"
 #include "eulerSparse.h"
 #include "centralDifferencesSparse.h"
-#include "StVKInternalForces.h"
-#include "StVKStiffnessMatrix.h"
-#include "StVKInternalForcesMT.h"
-#include "StVKStiffnessMatrixMT.h"
-#include "StVKForceModel.h"
-#include "massSpringSystemForceModel.h"
+
 #include "corotationalLinearFEM.h"
-#include "corotationalLinearFEMMT.h"
-#include "corotationalLinearFEMForceModel.h"
-#include "linearFEMForceModel.h"
+#include "corotationalLinearFEMStencilForceModel.h"
+
 #include "isotropicHyperelasticFEM.h"
-#include "isotropicHyperelasticFEMMT.h"
-#include "isotropicHyperelasticFEMForceModel.h"
 #include "isotropicMaterial.h"
 #include "StVKIsotropicMaterial.h"
 #include "neoHookeanIsotropicMaterial.h"
 #include "MooneyRivlinIsotropicMaterial.h"
+#include "isotropicHyperelasticFEMStencilForceModel.h"
+
 #include "getIntegratorSolver.h"
-#include "volumetricMeshLoader.h"
-#include "StVKElementABCDLoader.h"
 #include "generateMeshGraph.h"
 #include "generateMassMatrix.h"
+
 #include "massSpringSystem.h"
-#include "massSpringSystemMT.h"
 #include "massSpringSystemFromObjMeshConfigFile.h"
 #include "massSpringSystemFromTetMeshConfigFile.h"
 #include "massSpringSystemFromCubicMeshConfigFile.h"
+#include "massSpringStencilForceModel.h"
+
+#include "linearFEMStencilForceModel.h"
+
+#include "forceModelAssembler.h"
+
 #include "graph.h"
 #include "renderSprings.h"
 #include "configFile.h"
-#include "GL/glui.h"
+
 #include "lighting.h"
-#include "loadList.h"
+#include "listIO.h"
 #include "matrixIO.h"
+#include "averagingBuffer.h"
+
+#include "GL/glui.h"
 
 // graphics 
 char windowTitleBase[4096] = "Real-time sim";
@@ -128,7 +140,7 @@ double zFar=10.0;
 double cameraRadius;
 double focusPositionX, focusPositionY, focusPositionZ;
 double cameraLongitude, cameraLattitude;
-SphericalCamera * camera = NULL;
+SphericalCamera * camera = nullptr;
 int g_iLeftMouseButton=0, g_iMiddleMouseButton=0, g_iRightMouseButton=0;
 int g_vMousePos[2] = {0,0};
 int shiftPressed=0;
@@ -146,10 +158,10 @@ int renderVertices = 0;
 int lockScene=0;
 int pauseSimulation=0;
 int singleStepMode=0;
-Lighting * lighting = NULL;
-SceneObjectDeformable * deformableObjectRenderingMesh = NULL;
-SceneObjectDeformable * secondaryDeformableObjectRenderingMesh = NULL;
-SceneObject * extraSceneGeometry = NULL;
+Lighting * lighting = nullptr;
+SceneObjectDeformable * deformableObjectRenderingMesh = nullptr;
+SceneObjectDeformable * secondaryDeformableObjectRenderingMesh = nullptr;
+SceneObject * extraSceneGeometry = nullptr;
 char groundPlaneString[128];
 double groundPlaneHeight;
 double groundPlaneLightHeight = 10.0;
@@ -183,6 +195,7 @@ float dampingMassCoef; // Rayleigh mass damping
 float dampingStiffnessCoef; // Rayleigh stiffness damping
 float dampingLaplacianCoef = 0.0; // Laplacian damping (rarely used)
 float deformableObjectCompliance = 1.0; // scales all user forces by the provided factor
+
 // adjusts the stiffness of the object to cause all frequencies scale by the provided factor:
 // keep it to 1.0 (except for experts)
 float frequencyScaling = 1.0; 
@@ -201,20 +214,12 @@ int use1DNewmarkParameterFamily = 1;
 int substepsPerTimeStep = 1;
 double inversionThreshold;
 double fps = 0.0;
-const int fpsBufferSize = 5;
-int fpsHead = 0;
-double fpsBuffer[fpsBufferSize];
+AveragingBuffer fpsBuffer(5);
 double cpuLoad = 0;
 double forceAssemblyTime = 0.0;
-double forceAssemblyLocalTime = 0.0;
-const int forceAssemblyBufferSize = 50;
-int forceAssemblyHead = 0;
-double forceAssemblyBuffer[forceAssemblyBufferSize];
+AveragingBuffer forceAssemblyBuffer(50);
 double systemSolveTime = 0.0;
-double systemSolveLocalTime = 0.0;
-const int systemSolveBufferSize = 50;
-int systemSolveHead = 0;
-double systemSolveBuffer[systemSolveBufferSize];
+AveragingBuffer systemSolveBuffer(50);
 int enableTextures = 0;
 int staticSolver = 0;
 int graphicFrame = 0;
@@ -231,52 +236,62 @@ int subTimestepCounter = 0;
 int numFixedVertices;
 int * fixedVertices;
 int numForceLoads = 0;
-double * forceLoads = NULL;
-IntegratorBase * integratorBase = NULL;
-ImplicitNewmarkSparse * implicitNewmarkSparse = NULL;
-IntegratorBaseSparse * integratorBaseSparse = NULL;
-ForceModel * forceModel = NULL;
-StVKInternalForces * stVKInternalForces = NULL;
-StVKStiffnessMatrix * stVKStiffnessMatrix = NULL;
-StVKForceModel * stVKForceModel = NULL;
-MassSpringSystemForceModel * massSpringSystemForceModel = NULL;
-CorotationalLinearFEMForceModel * corotationalLinearFEMForceModel = NULL;
+double * forceLoads = nullptr;
+IntegratorBase * integratorBase = nullptr;
+ImplicitNewmarkSparse * implicitNewmarkSparse = nullptr;
+IntegratorBaseSparse * integratorBaseSparse = nullptr;
+ForceModel * forceModel = nullptr;
 int enableCompressionResistance = 1;
 double compressionResistance = 500;
 int centralDifferencesTangentialDampingUpdateMode = 1;
-int positiveDefinite = 0;
 int addGravity=0;
 double g=9.81;
-VolumetricMesh * volumetricMesh = NULL;
-TetMesh * tetMesh = NULL;
-Graph * meshGraph = NULL;
+
+VolumetricMesh * volumetricMesh = nullptr;
+TetMesh * tetMesh = nullptr;
+Graph * meshGraph = nullptr;
+
+StVKFEM * stVKFEM = nullptr;
+
 enum massSpringSystemSourceType { OBJ, TETMESH, CUBICMESH, CHAIN, NONE } massSpringSystemSource = NONE;
 enum deformableObjectType { STVK, COROTLINFEM, LINFEM, MASSSPRING, INVERTIBLEFEM, UNSPECIFIED } deformableObject = UNSPECIFIED;
 enum invertibleMaterialType { INV_STVK, INV_NEOHOOKEAN, INV_MOONEYRIVLIN, INV_NONE } invertibleMaterial = INV_NONE;
 enum solverType { IMPLICITNEWMARK, IMPLICITBACKWARDEULER, EULER, SYMPLECTICEULER, CENTRALDIFFERENCES, UNKNOWN } solver = UNKNOWN;
-MassSpringSystem * massSpringSystem = NULL;
-RenderSprings * renderMassSprings = NULL;
-SparseMatrix * massMatrix = NULL;
-SparseMatrix * LaplacianDampingMatrix = NULL;
+
+StencilForceModel * stencilForceModel = nullptr;
+ForceModelAssembler *forceModelAssembler = nullptr;
+CorotationalLinearFEMStencilForceModel * corotationalLinearFEMStencilForceModel = nullptr;
+IsotropicHyperelasticFEMStencilForceModel * isotropicHyperelasticFEMStencilForceModel = nullptr;
+MassSpringStencilForceModel * massSpringStencilForceModel = nullptr;
+StVKStencilForceModel * stVKStencilForceModel = nullptr;
+LinearFEMStencilForceModel * linearFEMStencilForceModel = nullptr;
+
+MassSpringSystem * massSpringSystem = nullptr;
+RenderSprings * renderMassSprings = nullptr;
+SparseMatrix * massMatrix = nullptr;
+SparseMatrix * LaplacianDampingMatrix = nullptr;
+
 int n;
-double * u = NULL;
-double * uvel = NULL;
-double * uaccel = NULL;
-double * f_ext = NULL;
-double * f_extBase = NULL;
-double * uSecondary = NULL;
-double * uInitial = NULL;
-double * velInitial = NULL;
+double * u = nullptr;
+double * uvel = nullptr;
+double * uaccel = nullptr;
+double * f_ext = nullptr;
+double * f_extBase = nullptr;
+double * uSecondary = nullptr;
+double * uInitial = nullptr;
+double * velInitial = nullptr;
+
 // interpolation to secondary mesh
 int secondaryDeformableObjectRenderingMesh_interpolation_numElementVertices;
-int * secondaryDeformableObjectRenderingMesh_interpolation_vertices = NULL;
-double * secondaryDeformableObjectRenderingMesh_interpolation_weights = NULL;
+int * secondaryDeformableObjectRenderingMesh_interpolation_vertices = nullptr;
+double * secondaryDeformableObjectRenderingMesh_interpolation_weights = nullptr;
 
 // glui
 GLUI * glui;
 GLUI_Spinner * timeStep_spinner;
 GLUI_StaticText * systemSolveStaticText;
 GLUI_StaticText * forceAssemblyStaticText;
+
 void callAllUICallBacks();
 void Sync_GLUI();
 void stopDeformations_buttonCallBack(int code);
@@ -341,7 +356,7 @@ void displayFunction(void)
   deformableObjectRenderingMesh->SetLighting(lighting);
 
   glEnable(GL_LIGHTING);
-
+  glPolygonOffset(0.0,0.0);
   glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
   glStencilFunc(GL_ALWAYS, 0, ~(0u));
@@ -388,7 +403,7 @@ void displayFunction(void)
 
   // render any extra scene geometry
   glStencilFunc(GL_ALWAYS, 0, ~(0u));
-  if (extraSceneGeometry != NULL)
+  if (extraSceneGeometry != nullptr)
     extraSceneGeometry->Render();
 
   double ground[4] = {0,1,0,-groundPlaneHeight-0.01};
@@ -403,7 +418,7 @@ void displayFunction(void)
     glDisable(GL_LIGHTING);
     deformableObjectRenderingMesh->RenderShadow(ground, light);
 
-    if (extraSceneGeometry != NULL)
+    if (extraSceneGeometry != nullptr)
       extraSceneGeometry->RenderShadow(ground, light);
     glEnable(GL_LIGHTING);
     glCallList(displayListGround);
@@ -465,7 +480,7 @@ void displayFunction(void)
   }
 
   // render springs for mass-spring systems
-  if ((massSpringSystem != NULL) & renderSprings)
+  if ((massSpringSystem != nullptr) & renderSprings)
   { 
     printf("rendering springs\n");
     glLineWidth(2.0);
@@ -606,21 +621,17 @@ void idleFunction(void)
     for(int i=0; i<substepsPerTimeStep; i++)
     {
       int code = integratorBase->DoTimestep();
-      printf("."); fflush(NULL);
+      printf("."); fflush(nullptr);
 
-      forceAssemblyLocalTime = integratorBaseSparse->GetForceAssemblyTime();
-      systemSolveLocalTime = integratorBaseSparse->GetSystemSolveTime();
+      double forceAssemblyLocalTime = integratorBaseSparse->GetForceAssemblyTime();
+      double systemSolveLocalTime = integratorBaseSparse->GetSystemSolveTime();
       //printf("Force assembly: %G\nSystem solve: %G\n", forceAssemblyTime, systemSolveTime);
 
-      // average forceAssemblyTime over last "forceAssemblyBufferSize" samples
-      forceAssemblyTime += 1.0 / forceAssemblyBufferSize * (forceAssemblyLocalTime - forceAssemblyBuffer[forceAssemblyHead]);
-      forceAssemblyBuffer[forceAssemblyHead] = forceAssemblyLocalTime;
-      forceAssemblyHead = (forceAssemblyHead + 1) % forceAssemblyBufferSize;
+      forceAssemblyBuffer.addValue(forceAssemblyLocalTime);
+      forceAssemblyTime = forceAssemblyBuffer.getAverage();
 
-      // average systemSolveTime over last "systemSolveBufferSize" samples
-      systemSolveTime += 1.0 / systemSolveBufferSize * (systemSolveLocalTime - systemSolveBuffer[systemSolveHead]);
-      systemSolveBuffer[systemSolveHead] = systemSolveLocalTime;
-      systemSolveHead = (systemSolveHead + 1) % systemSolveBufferSize;
+      systemSolveBuffer.addValue(systemSolveLocalTime);
+      systemSolveTime = systemSolveBuffer.getAverage();
 
       if (code != 0)
       {
@@ -662,7 +673,7 @@ void idleFunction(void)
     if (singleStepMode == 1)
       singleStepMode = 2;
 
-    printf("F"); fflush(NULL);
+    printf("F"); fflush(nullptr);
     graphicFrame++;
 
     if (lockAt30Hz)
@@ -680,7 +691,7 @@ void idleFunction(void)
   deformableObjectRenderingMesh->SetVertexDeformations(u);
 
   // interpolate deformations from volumetric mesh to rendering triangle mesh
-  if (secondaryDeformableObjectRenderingMesh != NULL)
+  if (secondaryDeformableObjectRenderingMesh != nullptr)
   {
     PerformanceCounter interpolationCounter;
     VolumetricMesh::interpolate(u, uSecondary, secondaryDeformableObjectRenderingMesh->Getn(), secondaryDeformableObjectRenderingMesh_interpolation_numElementVertices, secondaryDeformableObjectRenderingMesh_interpolation_vertices, secondaryDeformableObjectRenderingMesh_interpolation_weights);
@@ -694,7 +705,7 @@ void idleFunction(void)
     // recompute normals
     PerformanceCounter normalsCounter;
     deformableObjectRenderingMesh->BuildNormals(); 
-    if (secondaryDeformableObjectRenderingMesh != NULL)
+    if (secondaryDeformableObjectRenderingMesh != nullptr)
       secondaryDeformableObjectRenderingMesh->BuildNormals();
     normalsCounter.StopCounter();
     //printf("Recompute normals: %G\n", normalsCounter.GetElapsedTime());
@@ -714,11 +725,8 @@ void idleFunction(void)
   {
     titleBarCounter.StartCounter();
     double fpsLocal = graphicFrame / elapsedTime;
-
-    // average fps over last "fpsBufferSize" samples
-    fps += 1.0 / fpsBufferSize * (fpsLocal - fpsBuffer[fpsHead]);
-    fpsBuffer[fpsHead] = fpsLocal;
-    fpsHead = (fpsHead + 1) % fpsBufferSize;
+    fpsBuffer.addValue(fpsLocal);
+    fps = fpsBuffer.getAverage();
 
     //printf("Frames per second: %G\n", fps);
 
@@ -851,8 +859,9 @@ void keyboardFunction(unsigned char key, int x, int y)
 
     case '1':
       corotationalLinearFEM_warp = (corotationalLinearFEM_warp + 1) % (max_corotationalLinearFEM_warp + 1);
-      if(corotationalLinearFEMForceModel != NULL)
-        corotationalLinearFEMForceModel->SetWarp(corotationalLinearFEM_warp);
+      if(corotationalLinearFEMStencilForceModel != nullptr)
+        corotationalLinearFEMStencilForceModel->SetWarp(corotationalLinearFEM_warp);
+
       printf("CorotationalLinearFEM warp is now: %d\n", corotationalLinearFEM_warp);
       break;
 
@@ -862,7 +871,7 @@ void keyboardFunction(unsigned char key, int x, int y)
 
     case 'E':
       renderSecondaryDeformableObject = !renderSecondaryDeformableObject;
-      if (secondaryDeformableObjectRenderingMesh == NULL)
+      if (secondaryDeformableObjectRenderingMesh == nullptr)
         renderSecondaryDeformableObject = 0;
       break;
 
@@ -914,19 +923,19 @@ void specialFunction(int key, int x, int y)
   switch (key)
   {
     case GLUT_KEY_LEFT:
-      camera->MoveFocusRight(+0.1 * camera->GetRadius());
+      camera->MoveFocusRight(+0.1 * fabs(camera->GetRadius()));
     break;
 
     case GLUT_KEY_RIGHT:
-      camera->MoveFocusRight(-0.1 * camera->GetRadius());
+      camera->MoveFocusRight(-0.1 * fabs(camera->GetRadius()));
     break;
 
     case GLUT_KEY_DOWN:
-      camera->MoveFocusUp(+0.1 * camera->GetRadius());
+      camera->MoveFocusUp(+0.1 * fabs(camera->GetRadius()));
     break;
 
     case GLUT_KEY_UP:
-      camera->MoveFocusUp(-0.1 * camera->GetRadius());
+      camera->MoveFocusUp(-0.1 * fabs(camera->GetRadius()));
     break;
 
     case GLUT_KEY_PAGE_UP:
@@ -1090,8 +1099,8 @@ void initSimulation()
      1.0 / virtualToPhysicalPositionFactor,
      &zNear, &zFar, &camera);
 
-  volumetricMesh = NULL;
-  massSpringSystem = NULL;
+  volumetricMesh = nullptr;
+  massSpringSystem = nullptr;
 
   // set deformable material type
   if (strcmp(volumetricMeshFilename, "__none") != 0)
@@ -1132,7 +1141,7 @@ void initSimulation()
     VolumetricMesh::fileFormatType fileFormat = VolumetricMesh::ASCII;
     int verbose = 0;
     volumetricMesh = VolumetricMeshLoader::load(volumetricMeshFilename, fileFormat, verbose);
-    if (volumetricMesh == NULL)
+    if (volumetricMesh == nullptr)
     {
       printf("Error: unable to load the volumetric mesh from %s.\n", volumetricMeshFilename);
       exit(1);
@@ -1151,22 +1160,14 @@ void initSimulation()
     {
       unsigned int loadingFlag = 0; // 0 = use the low-memory version, 1 = use the high-memory version
       StVKElementABCD * precomputedIntegrals = StVKElementABCDLoader::load(volumetricMesh, loadingFlag);
-      if (precomputedIntegrals == NULL)
+      if (precomputedIntegrals == nullptr)
       {
         printf("Error: unable to load the StVK integrals.\n");
         exit(1);
       }
 
-      printf("Generating internal forces and stiffness matrix models...\n"); fflush(NULL);
-      if (numInternalForceThreads == 0)
-        stVKInternalForces = new StVKInternalForces(volumetricMesh, precomputedIntegrals, addGravity, g);
-      else
-        stVKInternalForces = new StVKInternalForcesMT(volumetricMesh, precomputedIntegrals, addGravity, g, numInternalForceThreads);
-
-      if (numInternalForceThreads == 0)
-        stVKStiffnessMatrix = new StVKStiffnessMatrix(stVKInternalForces);
-      else
-        stVKStiffnessMatrix = new StVKStiffnessMatrixMT(stVKInternalForces, numInternalForceThreads);
+      printf("Generating internal forces and stiffness matrix models...\n"); fflush(nullptr);
+      stVKFEM = new StVKFEM(volumetricMesh, precomputedIntegrals, addGravity, g);
     }
   }
 
@@ -1272,14 +1273,6 @@ void initSimulation()
     if (addGravity)
       massSpringSystem->SetGravity(addGravity, g);
 
-    if (numInternalForceThreads > 0)
-    {
-      printf("Launching threaded internal force evaluation: %d threads.\n", numInternalForceThreads);
-      MassSpringSystemMT * massSpringSystemMT = new MassSpringSystemMT(*massSpringSystem, numInternalForceThreads);
-      delete(massSpringSystem);
-      massSpringSystem = massSpringSystemMT;
-    }
-
     n = massSpringSystem->GetNumParticles();
 
     // create the mass matrix
@@ -1308,7 +1301,7 @@ void initSimulation()
   deformableObjectRenderingMesh->SetMaterialAlpha(0.5);
 
   // initialize the embedded triangle rendering mesh 
-  secondaryDeformableObjectRenderingMesh = NULL;
+  secondaryDeformableObjectRenderingMesh = nullptr;
   if (strcmp(secondaryRenderingMeshFilename, "__none") != 0)
   {
     secondaryDeformableObjectRenderingMesh = new SceneObjectDeformable(secondaryRenderingMeshFilename);
@@ -1349,16 +1342,16 @@ void initSimulation()
     if (strcmp(fixedVerticesFilename, "__none") == 0)
     {
       numFixedVertices = 0;
-      fixedVertices = NULL;
+      fixedVertices = nullptr;
     }
     else
     {
-      if (LoadList::load(fixedVerticesFilename, &numFixedVertices,&fixedVertices) != 0)
+      if (ListIO::load(fixedVerticesFilename, &numFixedVertices,&fixedVertices) != 0)
       {
-	printf("Error reading fixed vertices.\n");
-	exit(1);
+        printf("Error reading fixed vertices.\n");
+        exit(1);
       }
-      LoadList::sort(numFixedVertices, fixedVertices);
+      ListIO::sort(numFixedVertices, fixedVertices);
     }
   }
   else
@@ -1369,7 +1362,7 @@ void initSimulation()
   }
 
   printf("Loaded %d fixed vertices. They are:\n",numFixedVertices);
-  LoadList::print(numFixedVertices,fixedVertices);
+  ListIO::print(numFixedVertices,fixedVertices);
   // create 0-indexed fixed DOFs
   int numFixedDOFs = 3 * numFixedVertices;
   int * fixedDOFs = (int*) malloc (sizeof(int) * numFixedDOFs);
@@ -1444,49 +1437,44 @@ void initSimulation()
   if (deformableObject == STVK)
   {
     printf("Force model: STVK\n");
-    stVKForceModel = new StVKForceModel(stVKInternalForces, stVKStiffnessMatrix);
-    forceModel = stVKForceModel;
+    fflush(stdout);
+
+    stVKStencilForceModel = new StVKStencilForceModel(stVKFEM);
+    stencilForceModel = stVKStencilForceModel;
   }
 
   if (deformableObject == COROTLINFEM)
   {
     printf("Force model: COROTLINFEM\n");
-    TetMesh * tetMesh = dynamic_cast<TetMesh*>(volumetricMesh);
-    if (tetMesh == NULL)
-    {
-      printf("Error: the input mesh is not a tet mesh (CLFEM deformable model).\n");
-      exit(1);
-    }
 
-    CorotationalLinearFEM * corotationalLinearFEM;
+    CorotationalLinearFEM * corotationalLinearFEM = new CorotationalLinearFEM(volumetricMesh);
 
-    if (numInternalForceThreads == 0)
-      corotationalLinearFEM = new CorotationalLinearFEM(tetMesh);
-    else
-      corotationalLinearFEM = new CorotationalLinearFEMMT(tetMesh, numInternalForceThreads);
+    corotationalLinearFEMStencilForceModel = new CorotationalLinearFEMStencilForceModel(corotationalLinearFEM);
+    corotationalLinearFEMStencilForceModel->SetWarp(corotationalLinearFEM_warp);
 
-    corotationalLinearFEMForceModel = new CorotationalLinearFEMForceModel(corotationalLinearFEM, corotationalLinearFEM_warp);
-    forceModel = corotationalLinearFEMForceModel;
+    stencilForceModel = corotationalLinearFEMStencilForceModel;
   }
 
   if (deformableObject == LINFEM)
   {
     printf("Force model: LINFEM\n");
-    LinearFEMForceModel * linearFEMForceModel = new LinearFEMForceModel(stVKInternalForces);
-    forceModel = linearFEMForceModel;
+
+    assert(stVKStencilForceModel != nullptr);
+    linearFEMStencilForceModel = new LinearFEMStencilForceModel(stVKStencilForceModel);
+    stencilForceModel = linearFEMStencilForceModel;
   }
 
   if (deformableObject == INVERTIBLEFEM)
   {
     printf("Force model: INVERTIBLEFEM\n");
     TetMesh * tetMesh = dynamic_cast<TetMesh*>(volumetricMesh);
-    if (tetMesh == NULL)
+    if (tetMesh == nullptr)
     {
       printf("Error: the input mesh is not a tet mesh (Invertible FEM deformable model).\n");
       exit(1);
     }
 
-    IsotropicMaterial * isotropicMaterial = NULL;
+    IsotropicMaterial * isotropicMaterial = nullptr;
 
     // create the invertible material model
     if (strcmp(invertibleMaterialString, "StVK") == 0)
@@ -1500,7 +1488,6 @@ void initSimulation()
     {
       case INV_STVK:
       {
-
         isotropicMaterial = new StVKIsotropicMaterial(tetMesh, enableCompressionResistance, compressionResistance);
         printf("Invertible material: StVK.\n");
         break;
@@ -1523,40 +1510,39 @@ void initSimulation()
     }
 
     // create the invertible FEM deformable model
-    IsotropicHyperelasticFEM * isotropicHyperelasticFEM;
-    if (numInternalForceThreads == 0)
-      isotropicHyperelasticFEM = new IsotropicHyperelasticFEM(tetMesh, isotropicMaterial, inversionThreshold, addGravity, g);
-    else
-      isotropicHyperelasticFEM = new IsotropicHyperelasticFEMMT(tetMesh, isotropicMaterial, inversionThreshold, addGravity, g, numInternalForceThreads);
-
-    // create force model for the invertible FEM class
-    IsotropicHyperelasticFEMForceModel * isotropicHyperelasticFEMForceModel = new IsotropicHyperelasticFEMForceModel(isotropicHyperelasticFEM);
-    forceModel = isotropicHyperelasticFEMForceModel;
+    IsotropicHyperelasticFEM * isotropicHyperelasticFEM = new IsotropicHyperelasticFEM(tetMesh, isotropicMaterial, inversionThreshold, addGravity, g);
+    isotropicHyperelasticFEMStencilForceModel = new IsotropicHyperelasticFEMStencilForceModel(isotropicHyperelasticFEM);
+    stencilForceModel = isotropicHyperelasticFEMStencilForceModel;
   }
 
   if (deformableObject == MASSSPRING)
   {
     printf("Force model: MASSSPRING\n");
-    massSpringSystemForceModel = new MassSpringSystemForceModel(massSpringSystem);
-    forceModel = massSpringSystemForceModel;
+
+    massSpringStencilForceModel = new MassSpringStencilForceModel(massSpringSystem);
+    stencilForceModel = massSpringStencilForceModel;
 
     renderMassSprings = new RenderSprings();
   }
+
+  assert(stencilForceModel != nullptr);
+  forceModelAssembler = new ForceModelAssembler(stencilForceModel);
+  forceModel = forceModelAssembler;
 
   // initialize the integrator
   printf("Initializing the integrator, n = %d...\n", n);
   printf("Solver type: %s\n", solverMethod);
 
-  integratorBaseSparse = NULL;
+  integratorBaseSparse = nullptr;
   if (solver == IMPLICITNEWMARK)
   {
-    implicitNewmarkSparse = new ImplicitNewmarkSparse(3*n, timeStep, massMatrix, forceModel, positiveDefinite, numFixedDOFs, fixedDOFs,
+    implicitNewmarkSparse = new ImplicitNewmarkSparse(3*n, timeStep, massMatrix, forceModel, numFixedDOFs, fixedDOFs,
        dampingMassCoef, dampingStiffnessCoef, maxIterations, epsilon, newmarkBeta, newmarkGamma, numSolverThreads);
     integratorBaseSparse = implicitNewmarkSparse;
   }
   else if (solver == IMPLICITBACKWARDEULER)
   {
-    implicitNewmarkSparse = new ImplicitBackwardEulerSparse(3*n, timeStep, massMatrix, forceModel, positiveDefinite, numFixedDOFs, fixedDOFs,
+    implicitNewmarkSparse = new ImplicitBackwardEulerSparse(3*n, timeStep, massMatrix, forceModel, numFixedDOFs, fixedDOFs,
        dampingMassCoef, dampingStiffnessCoef, maxIterations, epsilon, numSolverThreads);
     integratorBaseSparse = implicitNewmarkSparse;
   }
@@ -1577,7 +1563,7 @@ void initSimulation()
 
   integratorBase = integratorBaseSparse;
 
-  if (integratorBase == NULL)
+  if (integratorBase == nullptr)
   {
     printf("Error: failed to initialize numerical integrator.\n");
     exit(1);
@@ -1589,22 +1575,12 @@ void initSimulation()
   integratorBase->SetState(uInitial, velInitial);
   integratorBase->SetTimestep(timeStep / substepsPerTimeStep);
 
-  if (implicitNewmarkSparse != NULL)
+  if (implicitNewmarkSparse != nullptr)
   {
     implicitNewmarkSparse->UseStaticSolver(staticSolver);
-    if (velInitial != NULL)
+    if (velInitial != nullptr)
       implicitNewmarkSparse->SetState(implicitNewmarkSparse->Getq(), velInitial);
   }
-
-  // clear fps buffer
-  for(int i=0; i<fpsBufferSize; i++)
-    fpsBuffer[i] = 0.0;
-
-  for(int i=0; i<forceAssemblyBufferSize; i++)
-    forceAssemblyBuffer[i] = 0.0;
-
-  for(int i=0; i<systemSolveBufferSize; i++)
-    systemSolveBuffer[i] = 0.0;
 
   // load any external geometry file (e.g. some static scene for decoration; usually there will be none)
   if (strcmp(extraSceneGeometryFilename,"__none") != 0)
@@ -1613,7 +1589,7 @@ void initSimulation()
     extraSceneGeometry->BuildNormals(85.0);
   }
   else
-    extraSceneGeometry = NULL;
+    extraSceneGeometry = nullptr;
 
   // set up the ground plane (for rendering)
   renderGroundPlane = (strcmp(groundPlaneString, "__none") != 0);
@@ -1812,7 +1788,7 @@ void newmarkBeta_spinnerCallBack(int code)
       newmarkGamma = 0.5;
   }
 
-  if (implicitNewmarkSparse != NULL)
+  if (implicitNewmarkSparse != nullptr)
   {
     implicitNewmarkSparse->SetNewmarkBeta(newmarkBeta);
     implicitNewmarkSparse->SetNewmarkGamma(newmarkGamma);
@@ -1832,7 +1808,7 @@ void newmarkGamma_spinnerCallBack(int code)
   if (use1DNewmarkParameterFamily)
     newmarkBeta = (newmarkGamma + 0.5) * (newmarkGamma + 0.5) / 4.0;
 
-  if (implicitNewmarkSparse != NULL)
+  if (implicitNewmarkSparse != nullptr)
   {
     implicitNewmarkSparse->SetNewmarkBeta(newmarkBeta);
     implicitNewmarkSparse->SetNewmarkGamma(newmarkGamma);
@@ -1847,7 +1823,7 @@ void newmark_checkboxuse1DNewmarkParameterFamilyCallBack(int code)
   {
     newmarkBeta = (newmarkGamma + 0.5) * (newmarkGamma + 0.5) / 4.0;
 
-    if (implicitNewmarkSparse != NULL)
+    if (implicitNewmarkSparse != nullptr)
     {
       implicitNewmarkSparse->SetNewmarkBeta(newmarkBeta);
       implicitNewmarkSparse->SetNewmarkGamma(newmarkGamma);
@@ -2049,7 +2025,7 @@ int main(int argc, char* argv[])
   char * configFilenameC = argv[1];
   opt_t opttable[] =
   {
-    { NULL, 0, NULL }
+    { nullptr, 0, nullptr }
   };
 
   argv += (numFixedArgs-1);

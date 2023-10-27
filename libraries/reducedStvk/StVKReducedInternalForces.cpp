@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.0                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "reducedStvk" library , Copyright (C) 2007 CMU, 2009 MIT              *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -26,17 +30,21 @@
  *                                                                       *
  *************************************************************************/
 
-#include "lapack-headers.h"
 #include "matrixIO.h"
-#if defined(_WIN32) || defined(WIN32) || defined(linux)
-  #include "mkl_service.h"
-#endif
 #include "matrixMacros.h"
 #include "matrixProjection.h"
 #include "StVKReducedInternalForces.h"
 #include "volumetricMeshENuMaterial.h"
+#include "lapack-headers.h"
+#if defined(USE_INTEL_MKL)
+  #include "mkl_service.h"
+#endif
+#ifdef USE_TBB
+  #include <tbb/tbb.h>
+#endif
+using namespace std;
 
-StVKReducedInternalForces::StVKReducedInternalForces(int r, double * U, VolumetricMesh * volumetricMesh, StVKElementABCD * precomputedABCDIntegrals, int initOnly, bool addGravity_, double g_, int verbose_): precomputedIntegrals(precomputedABCDIntegrals), unitReducedGravityForce(NULL), reducedGravityForce(NULL), addGravity(addGravity_), g(g_), useSingleThread(0), shallowCopy(0), verbose(verbose_)
+StVKReducedInternalForces::StVKReducedInternalForces(int r, double * U, VolumetricMesh * volumetricMesh, StVKElementABCD * precomputedABCDIntegrals, bool addGravity_, double g_, int verbose_): precomputedIntegrals(precomputedABCDIntegrals), unitReducedGravityForce(NULL), reducedGravityForce(NULL), addGravity(addGravity_), g(g_), useSingleThread(0), shallowCopy(0), verbose(verbose_)
 {
   int numElements = volumetricMesh->getNumElements();
   lambdaLame = (double*) malloc (sizeof(double) * numElements);
@@ -57,8 +65,36 @@ StVKReducedInternalForces::StVKReducedInternalForces(int r, double * U, Volumetr
   }
 
   InitComputation(r, U, volumetricMesh);
-  if (!initOnly)
+
+  #ifdef USE_TBB
+    tbb::enumerable_thread_specific<vector<double>> threadLocalData(r * (linearSize + quadraticSize + cubicSize), 0.0);
+    tbb::parallel_for(tbb::blocked_range<int>(0, volumetricMesh->getNumElements()), [&](const tbb::blocked_range<int> & rng)
+    {
+      auto & localVector = threadLocalData.local();
+      double * target[3] = { &localVector[0], &localVector[r*linearSize], &localVector[r*(linearSize + quadraticSize)] };
+      tbb::this_task_arena::isolate([&]
+      {
+        ProcessElements(rng.begin(), rng.end(), target);
+      });
+    }, tbb::static_partitioner());
+
+    for(const auto & localVector : threadLocalData)
+    {
+      const double * sourceLinear = &localVector[0];
+      for(int j=0; j<r*linearSize; j++)
+        linearCoef_[j] += sourceLinear[j];
+
+      const double * sourceQuadratic = &localVector[r * linearSize];
+      for(int j=0; j<r*quadraticSize; j++)
+        quadraticCoef_[j] += sourceQuadratic[j];
+
+      const double * sourceCubic = &localVector[r * (linearSize + quadraticSize)];
+      for(int j=0; j<r*cubicSize; j++)
+        cubicCoef_[j] += sourceCubic[j];
+    }
+  #else
     ProcessElements(0, volumetricMesh->getNumElements());
+  #endif
   InitGravity();
 }
 
@@ -254,6 +290,7 @@ int StVKReducedInternalForces::LoadFromStream(FILE * fin, int rTarget, int bigEn
   reducedGravityForce = NULL;
   precomputedIntegrals = NULL;
   numElementVertices = 0;
+  lambdaLame = NULL;
   muLame = NULL;
 
   InitBuffers();
@@ -269,7 +306,12 @@ int StVKReducedInternalForces::LoadFromStream(FILE * fin, int rTarget, int bigEn
 
 StVKReducedInternalForces::~StVKReducedInternalForces()
 {
-  if (!shallowCopy)
+  if (shallowCopy >= 1)
+  {
+    if (shallowCopy == 2)
+      free(reducedGravityForce);
+  }
+  else
   {
     free(unitReducedGravityForce);
     free(reducedGravityForce);
@@ -396,7 +438,10 @@ void StVKReducedInternalForces::ProcessElements(int startElement, int endElement
     if (verbose >= 1)
     {
       if (el % 100 == 1)
-        printf("%d ",el); fflush(NULL);
+      {
+        printf("%d ",el); 
+        fflush(NULL);
+      }
     }
 
     double lambda = lambdaLame[el];
@@ -442,8 +487,6 @@ void StVKReducedInternalForces::ProcessElements(int startElement, int endElement
   for(int c=0; c<numElementVertices; c++)
     forceBuffer[c] = (double*) calloc (3*r2,sizeof(double));
 
-  memset(quadraticCoef_, 0, sizeof(double) * r * quadraticSize);
-
   int * vertices = (int*) malloc (sizeof(int) * numElementVertices);
 
   for(int el=startElement; el < endElement; el++)
@@ -453,7 +496,10 @@ void StVKReducedInternalForces::ProcessElements(int startElement, int endElement
     if (verbose >= 1)
     {
       if (el % 100 == 1)
-        printf("%d ",el); fflush(NULL);
+      {
+        printf("%d ",el); 
+        fflush(NULL);
+      }
     }
 
     double lambda = lambdaLame[el];
@@ -560,7 +606,10 @@ void StVKReducedInternalForces::ProcessElements(int startElement, int endElement
     if (verbose >= 1)
     {
       if ((el % 50 == 1) || ((r > 30) && (el % 25 == 1)))
-        printf("%d ",el); fflush(NULL);
+      {
+        printf("%d ",el); 
+        fflush(NULL);
+      }
     }
 
     double lambda = lambdaLame[el];
@@ -618,9 +667,6 @@ void StVKReducedInternalForces::ProcessElements(int startElement, int endElement
       } // over b
     } // over a
   }
-
-  for(int i=0; i < r*cubicSize; i++)
-    cubicCoef_[i] = 0.0;
 
   // unpack
   for(int i=0; i<r; i++)
@@ -825,7 +871,7 @@ void StVKReducedInternalForces::Evaluate(double * q, double * fq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux)
+    #if defined(USE_INTEL_MKL)
       mkl_max_threads = mkl_get_max_threads();
       mkl_dynamic = mkl_get_dynamic();
       mkl_set_num_threads(1);
@@ -896,7 +942,7 @@ void StVKReducedInternalForces::Evaluate(double * q, double * fq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux)
+    #if defined(USE_INTEL_MKL)
       mkl_set_num_threads(mkl_max_threads);
       mkl_set_dynamic(mkl_dynamic);
     #elif defined(__APPLE__)
@@ -1274,7 +1320,7 @@ void StVKReducedInternalForces::PrintCubicCoefficients()
         }
 }
 
-void StVKReducedInternalForces::UseSingleThread(int useSingleThread_)
+void StVKReducedInternalForces::UseSingleThreadInEvaluation(int useSingleThread_)
 {
   useSingleThread = useSingleThread_;
 }
@@ -1301,11 +1347,16 @@ void StVKReducedInternalForces::Scale(double scalingFactor)
     cubicCoef_[i] *= scalingFactor;
 }
 
-StVKReducedInternalForces * StVKReducedInternalForces::ShallowClone()
+StVKReducedInternalForces * StVKReducedInternalForces::ShallowClone(int deepCloneGravityBuffer)
 {
   StVKReducedInternalForces * output = new StVKReducedInternalForces(*this); // invoke default copy constructor
   output->shallowCopy = 1;
   output->InitBuffers();
+  if (deepCloneGravityBuffer)
+  {
+    output->reducedGravityForce = NULL;
+    output->shallowCopy = 2;
+  }
   return output;
 }
 

@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "forceModel" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
+ * "forceModel" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -34,6 +38,7 @@ LinearFEMForceModel::LinearFEMForceModel(StVKInternalForces * stVKInternalForces
   StVKStiffnessMatrix * stVKStiffnessMatrix = new StVKStiffnessMatrix(stVKInternalForces);
   stVKStiffnessMatrix->GetStiffnessMatrixTopology(&K);
   r = K->GetNumRows();
+
   double * zero = (double*) calloc (K->GetNumRows(), sizeof(double));
   stVKStiffnessMatrix->ComputeStiffnessMatrix(zero, K);
   free(zero);
@@ -45,7 +50,12 @@ LinearFEMForceModel::~LinearFEMForceModel()
   delete(K);
 }
 
-void LinearFEMForceModel::GetInternalForce(double * u, double * internalForces)
+double LinearFEMForceModel::GetElasticEnergy(const double * u)
+{
+  return 0.5 * K->QuadraticForm(u);
+}
+
+void LinearFEMForceModel::GetInternalForce(const double * u, double * internalForces)
 {
   K->MultiplyVector(u, internalForces);
 }
@@ -55,7 +65,7 @@ void LinearFEMForceModel::GetTangentStiffnessMatrixTopology(SparseMatrix ** tang
   *tangentStiffnessMatrix = new SparseMatrix(*K);
 }
 
-void LinearFEMForceModel::GetTangentStiffnessMatrix(double * u, SparseMatrix * tangentStiffnessMatrix)
+void LinearFEMForceModel::GetTangentStiffnessMatrix(const double * u, SparseMatrix * tangentStiffnessMatrix)
 {
   *tangentStiffnessMatrix = *K;
 } 

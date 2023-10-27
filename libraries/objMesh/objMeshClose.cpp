@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
+ * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -39,7 +43,7 @@ int ObjMeshClose::Close(ObjMesh * objMesh)
   ObjMeshOrientable * objMeshOrientable = NULL;
   try
   {
-    int * numOrientationFlips = NULL; 
+    int * numOrientationFlips = NULL;
     int verbose=0;
     objMeshOrientable = new ObjMeshOrientable(objMesh, 1, numOrientationFlips, verbose);
   }
@@ -86,7 +90,7 @@ int ObjMeshClose::Close(ObjMesh * objMesh)
         printf("Mesh is non-orientable (cannot detect next edge along the hole).\n");
         return 2;
       }
-      
+
       edge = nextHalfEdge.position();
     }
     while (edge != firstEdge);
@@ -112,7 +116,7 @@ int ObjMeshClose::Close(ObjMesh * objMesh)
     {
       int vtxIndex[3] = { numVertices, boundaryVertices[(i+1) % boundaryVertices.size()], boundaryVertices[i] };
       //printf("[%d %d %d] ", vtxIndex[0], vtxIndex[1], vtxIndex[2]);
-      
+
       // compute flat normal
       Vec3d normal = norm(cross(objMesh->getPosition(vtxIndex[1]) - objMesh->getPosition(vtxIndex[0]), objMesh->getPosition(vtxIndex[2]) - objMesh->getPosition(vtxIndex[0]) ));
 

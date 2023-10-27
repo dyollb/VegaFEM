@@ -1,14 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
+ * "matrixIO" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC       *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
- * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
- * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
+ * http://www.jernejbarbic.com/vega                                      *
+ *                                                                       *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
+ *           Doug L. James, Jovan Popovic                                *
+ *                                                                       *
+ * Funding: National Science Foundation, Link Foundation,                *
+ *          Singapore-MIT GAMBIT Game Lab,                               *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -49,34 +58,56 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 #include "matrixMacros.h"
 
 // === matrix input/output routines ===
 
+// function ending with "_" will abort if fails to read/write
 template <class real>
 int ReadMatrixFromDisk(const char * filename, int * m, int * n, real ** matrix);
 template <class real>
+int ReadMatrixFromDisk(const char * filename, int * m, int * n, std::vector<real> & matrix);
+template <class real>
+int ReadMatrixFromDisk(const char * filename, int & m, int & n, std::vector<real> & matrix) { return ReadMatrixFromDisk(filename, &m, &n, matrix); }
+
+template <class real>
 int ReadMatrixFromDisk_(const char * filename, int * m, int * n, real ** matrix);
+template <class real>
+int ReadMatrixFromDisk_(const char * filename, int * m, int * n, std::vector<real> & matrix);
+template <class real>
+int ReadMatrixFromDisk_(const char * filename, int & m, int & n, std::vector<real> & matrix) { return ReadMatrixFromDisk_(filename, &m, &n, matrix); }
+
+template <class real>
+int ReadVectorFromDisk(const char * filename, int & m, std::vector<real> & vec);
+template <class real>
+int ReadVectorFromDisk(const char * filename, std::vector<real> & vec) { int n = 0; return ReadVectorFromDisk(filename, n, vec); }
 
 int ReadMatrixSizeFromDisk(const char * filename, int * m, int * n);
 void ReadMatrixSizeFromDisk_(const char * filename, int * m, int * n);
 void ChangeMatrixHeader(const char * filename, int numRows, int numColumns); // overwrites any previous header; keeps data intact
 
 template <class real>
-int WriteMatrixToDisk(const char * filename, int m, int n, real * matrix);
+int WriteMatrixToDisk(const char * filename, int m, int n, const real * matrix);
 template <class real>
-int WriteMatrixToDisk_(const char * filename, int m, int n, real * matrix);
+int WriteMatrixToDisk_(const char * filename, int m, int n, const real * matrix);
 
 template <class real>
-int AppendMatrixToDisk(const char * filename, int m, int n, real * matrix);
+int WriteVectorToDisk(const char * filename, int m, const real * vector) { return WriteMatrixToDisk(filename, m, 1, vector); }
 template <class real>
-int AppendMatrixToDisk_(const char * filename, int m, int n, real * matrix);
+int WriteVectorToDisk(const char * filename, const std::vector<real> & vec) { return WriteVectorToDisk(filename, vec.size(), vec.data()); }
+
+// assert m is the same as the matrix already stored in filename
+template <class real>
+int AppendMatrixToDisk(const char * filename, int m, int n, const real * matrix);
+template <class real>
+int AppendMatrixToDisk_(const char * filename, int m, int n, const real * matrix);
 
 template <class real>
 int ReadMatrixFromDiskTextFile(const char * filename, int * m, int * n, real ** matrix);
 
 template <class real>
-int WriteMatrixToDiskTextFile(const char * filename, int m, int n, real * matrix);
+int WriteMatrixToDiskTextFile(const char * filename, int m, int n, const real * matrix);
 
 // "fileList" is a filename of a text file that contains the matrices to be loaded (concatenated column-wise) into the matrix, one text entry per line of "fileList"
 template <class real>
@@ -101,7 +132,7 @@ void Abort_(const char * reason, int exitCode);
 int OpenFile_(const char * filename, FILE ** fin, const char * mode);
 
 template <class real>
-int WriteMatrixToStream(FILE * file, int m, int n, real * matrix);
+int WriteMatrixToStream(FILE * file, int m, int n, const real * matrix);
 
 int WriteMatrixHeaderToStream(FILE * file, int m, int n);
 
@@ -131,6 +162,20 @@ int ReadModeInfoFromDisk(const char * filename, int * n, int * r);
 
 template <class real>
 int WriteModesToDisk(const char * filename, int n, int r, real * frequencies, real * modes);
+
+// =================================================================
+// IMPLEMENTATION
+// =================================================================
+
+template <class real>
+int ReadVectorFromDisk(const char * filename, int & m, std::vector<real> & vec)
+{
+  int n = 0;
+  int ret = ReadMatrixFromDisk(filename, m, n, vec);
+  if (ret != 0) return ret;
+  if (n != 1) return 2;
+  return ret;
+}
 
 #endif
 

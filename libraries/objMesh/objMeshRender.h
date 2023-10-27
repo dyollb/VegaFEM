@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
+ * "objMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Christopher Twigg, Daniel Schroeder      *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -33,10 +37,12 @@
 #define _OBJMESHRENDER_H_
 
 #include <vector>
+#include <map>
+#include <set>
 #include <assert.h>
 #include "objMesh.h"
 
-//flags for ObjMeshRender: 
+//flags for ObjMeshRender:
 //geometry mode
 #define OBJMESHRENDER_TRIANGLES (1 << 0)
 #define OBJMESHRENDER_EDGES (1 << 1)
@@ -102,27 +108,45 @@ public:
     static void flipImage(int width, int height, int bpp, unsigned char * image);
   };
 
-  ObjMeshRender(ObjMesh * mesh);
-  ~ObjMeshRender();
+  ObjMeshRender(const ObjMesh * mesh);
+  virtual ~ObjMeshRender();
 
-  void render(int geometryMode, int renderMode, int renderSingleGroup=-1);
+  // render faces/edges/vertices
+  // most OpenGL states are not modified by this function, except those volatile ones like current color, texture and normal
+  // external lighting setting before this function is called affects faces rendering
+  // external color affects edges and vertices rendering
+  // external line width affects edges rendering
+  void render(int geometryMode, int renderMode, int renderSingleGroup=-1, int giveWarnings=0);
   unsigned int createDisplayList(int geometryMode, int renderMode);
 
   // set custom colors, for OBJMESHRENDER_CUSTOMCOLOR mode
-  void setCustomColors(Vec3d color); // constant color for each mesh vertex
-  void setCustomColors(std::vector<Vec3d> colors); // specific color for every mesh vertex
+  void setCustomColors(const Vec3d & color); // constant color for each mesh vertex
+  void setCustomColors(const std::vector<Vec3d> & colors); // specific color for every mesh vertex
 
   // set custom colors, for OBJMESHRENDER_CUSTOMCOLORFACES mode
-  void setCustomColorsFaces(Vec3d color); // constant color for each mesh face
-  void setCustomColorsFaces(std::vector<Vec3d> colors); // specific color for every mesh face
+  void setCustomColorsFaces(const Vec3d & color); // constant color for each mesh face
+  void setCustomColorsFaces(const std::vector<Vec3d> & colors); // specific color for every mesh face
 
   void renderSpecifiedVertices(int * specifiedVertices, int numSpecifiedVertices);
   void renderVertex(int index);
 
-  // the more specific rendering versions for various SceneObject functions
-  void renderGroup(unsigned int groupIndex, int geometryMode, int renderMode);
-  void renderGroup(const char * groupName, int geometryMode, int renderMode);
+  // the more specific rendering versions
+  void renderGroup(int groupIndex, int geometryMode, int renderMode, int giveWarnings=0);
+  void renderGroup(const char * groupName, int geometryMode, int renderMode, int giveWarnings=0);
   void renderGroupEdges(const char * groupName);
+  void renderGroupEdges(int groupIndex);
+
+  // render boundary edges
+  void renderBoundaryEdges(); // does not use the display list
+  unsigned int createBoundaryEdgesDisplayList();
+
+  // render crease edges
+  void renderCreaseEdges(double thresholdAngle=90.0); // does not use the display list
+  unsigned int createCreaseEdgesDisplayList(double thresholdAngle=90.0);
+
+  // render silhouette edges
+  void renderSilhouetteEdges(double cameraPos[3]); // does not use the display list
+  unsigned int createSilhouetteEdgesDisplayList(double cameraPos[3]);
 
   int numTextures();
   int maxBytesPerPixelInTextures();
@@ -138,13 +162,21 @@ public:
   double getAlphaBlendingThreshold() const { return alphaBlendingThreshold; }
   void setAlphaBlendingThreshold(double threshold) { alphaBlendingThreshold = threshold; }
 
+  // hide faces when rendering
+  void hideFace(int groupID, int faceID) { hiddenFaces[groupID].insert(faceID); }
+  void unhideFace(int groupID, int faceID);
+  void unhideAllFaces() { hiddenFaces.clear(); }
+  bool isFaceHidden(int groupID, int faceID) const;
+  const std::map<int, std::set<int>> & getHiddenFaces() const { return hiddenFaces; }
+
 protected:
-  ObjMesh * mesh;
+  const ObjMesh * mesh;
   std::vector<Vec3d> customColors;
   std::vector<Vec3d> customColorsFaces;
   std::vector< Texture* > textures;
   std::vector<int> ownTexture;
   double alphaBlendingThreshold;
+  std::map<int, std::set<int>> hiddenFaces;
 };
 
 #endif

@@ -1,14 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
- * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
- * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
+ * http://www.jernejbarbic.com/vega                                      *
+ *                                                                       *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
+ *           Doug L. James, Jovan Popovic                                *
+ *                                                                       *
+ * Funding: National Science Foundation, Link Foundation,                *
+ *          Singapore-MIT GAMBIT Game Lab,                               *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -69,23 +78,35 @@ void InPlaceTransposeMatrix(int m, int n, real * mtx)
   }
 }
 
-template float * MultiplyMatrices<float>(int m, int p, int n, float * mtx1, float * mtx2, float * output);
-template double * MultiplyMatrices<double>(int m, int p, int n, double * mtx1, double * mtx2, double * output);
+template float * MultiplyMatrices<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template double * MultiplyMatrices<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
 
-template float * MultiplyMatricesT<float>(int m, int p, int n, float * mtx1, float * mtx2, float * output);
-template double * MultiplyMatricesT<double>(int m, int p, int n, double * mtx1, double * mtx2, double * output);
+template void MultiplyMatricesAdd<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template void MultiplyMatricesAdd<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
 
-template float * SumMatrices<float>(int m, int n, float * mtx1, float * mtx2, float * output);
-template double * SumMatrices<double>(int m, int n, double * mtx1, double * mtx2, double * output);
+template void MultiplyMatricesSub<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template void MultiplyMatricesSub<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
 
-template float * SubtractMatrices<float>(int m, int n, float * mtx1, float * mtx2, float * output);
-template double * SubtractMatrices<double>(int m, int n, double * mtx1, double * mtx2, double * output);
+template float * MultiplyMatricesT<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template double * MultiplyMatricesT<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
 
-template float * ScalarMultiplyMatrix<float>(int m, int n, float alpha, float * mtx, float * output);
-template double * ScalarMultiplyMatrix<double>(int m, int n, double alpha, double * mtx, double * output);
+template void MultiplyMatricesTAdd<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template void MultiplyMatricesTAdd<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
+
+template void MultiplyMatricesTSub<float>(int m, int p, int n, const float * mtx1, const float * mtx2, float * output);
+template void MultiplyMatricesTSub<double>(int m, int p, int n, const double * mtx1, const double * mtx2, double * output);
+
+template float * SumMatrices<float>(int m, int n, const float * mtx1, const float * mtx2, float * output);
+template double * SumMatrices<double>(int m, int n, const double * mtx1, const double * mtx2, double * output);
+
+template float * SubtractMatrices<float>(int m, int n, const float * mtx1, const float * mtx2, float * output);
+template double * SubtractMatrices<double>(int m, int n, const double * mtx1, const double * mtx2, double * output);
+
+template float * ScalarMultiplyMatrix<float>(int m, int n, float alpha, const float * mtx, float * output);
+template double * ScalarMultiplyMatrix<double>(int m, int n, double alpha, const double * mtx, double * output);
 
 template void InPlaceTransposeMatrix<double>(int m, int n, double * U);
 template void InPlaceTransposeMatrix<float>(int m, int n, float * U);
 
-template double VectorNorm<double>(int m, double * vec);
-template float VectorNorm<float>(int m, float * vec);
+template double VectorNorm<double>(int m, const double * vec);
+template float VectorNorm<float>(int m, const float * vec);

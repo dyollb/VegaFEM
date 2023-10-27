@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
+ * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -28,6 +32,7 @@
 
 #include "tetMesh.h"
 #include "volumetricMeshParser.h"
+#include "geometryQuery.h"
 
 const VolumetricMesh::elementType TetMesh::elementType_ = TET;
 
@@ -75,7 +80,7 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
   if (dim != 3)
     throw 3;
 
-  vertices = (Vec3d**) malloc (sizeof(Vec3d*) * numVertices);
+  vertices = new Vec3d [numVertices];
 
   for(int i=0; i<numVertices; i++)
   {
@@ -85,7 +90,7 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
     sscanf(lineBuffer, "%d %lf %lf %lf", &index, &x, &y, &z);
     if (index != (i+1))
       throw 3;
-    vertices[i] = new Vec3d(x,y,z);
+    vertices[i] = Vec3d(x,y,z);
   }
   
   parser.close();
@@ -134,17 +139,48 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
   setSingleMaterial(E, nu, density);
 }
 
-TetMesh::TetMesh(int numVertices_, double * vertices_,
-               int numElements_, int * elements_,
-               double E, double nu, double density): VolumetricMesh(numVertices_, vertices_, numElements_, 4, elements_, E, nu, density) {}
+TetMesh::TetMesh(const Vec3d & p0, const Vec3d & p1, const Vec3d & p2, const Vec3d & p3) : VolumetricMesh(4) {
+  double E = 1E8;
+  double nu = 0.45;
+  double density = 1000;
+  
+  numVertices = 4;
+  vertices = (Vec3d*) malloc (sizeof(Vec3d) * numVertices);
 
-TetMesh::TetMesh(int numVertices_, double * vertices_,
-         int numElements_, int * elements_,
-         int numMaterials_, Material ** materials_,
-         int numSets_, Set ** sets_,
-         int numRegions_, Region ** regions_): 
+  vertices[0] = p0;
+  vertices[1] = p1;
+  vertices[2] = p2;
+  vertices[3] = p3;
+
+  numElements = 1;
+  elements = (int**) malloc (sizeof(int*) * numElements);
+  elementMaterial = (int*) malloc (sizeof(int) * numElements);
+
+  elements[0] = (int*) malloc (sizeof(int) * 4);
+  for(int i = 0; i < 4; i++)
+    elements[0][i] = i;
+  
+  numMaterials = 0;
+  numSets = 0;
+  numRegions = 0;
+  materials = NULL;
+  sets = NULL;
+  regions = NULL;
+
+  setSingleMaterial(E, nu, density);
+}
+
+
+TetMesh::TetMesh(int numVertices_, double * vertices_, int numElements_, int * elements_, double E, double nu, double density)
+    : VolumetricMesh(numVertices_, vertices_, numElements_, 4, elements_, E, nu, density) {}
+
+TetMesh::TetMesh(int numVertices_, double * vertices_, int numElements_, int * elements_,
+         int numMaterials_, Material ** materials_, int numSets_, Set ** sets_, int numRegions_, Region ** regions_): 
   VolumetricMesh(numVertices_, vertices_, numElements_, 4, elements_,
                  numMaterials_, materials_, numSets_, sets_, numRegions_, regions_) {}
+
+TetMesh::TetMesh(const std::vector<Vec3d> & vertices, const std::vector<Vec4i> & elements, double E, double nu, double density)
+    : TetMesh(vertices.size(), (double*)vertices.data(), elements.size(), (int*)elements.data(), E, nu, density) {}
 
 TetMesh::TetMesh(const TetMesh & source): VolumetricMesh(source) {}
 
@@ -154,7 +190,8 @@ VolumetricMesh * TetMesh::clone()
   return mesh;
 }
 
-TetMesh::TetMesh(const TetMesh & tetMesh, int numElements_, int * elements_, map<int,int> * vertexMap_): VolumetricMesh(tetMesh, numElements_, elements_, vertexMap_) {}
+TetMesh::TetMesh(const TetMesh & tetMesh, int numElements_, int * elements_, map<int,int> * vertexMap_)
+    : VolumetricMesh(tetMesh, numElements_, elements_, vertexMap_) {}
 
 TetMesh::~TetMesh() {}
 
@@ -171,6 +208,14 @@ int TetMesh::saveToBinary(const char * filename, unsigned int * bytesWritten) co
 int TetMesh::saveToBinary(FILE * binaryOutputStream, unsigned int * bytesWritten, bool countBytesOnly) const
 {
   return VolumetricMesh::saveToBinary(binaryOutputStream, bytesWritten, elementType_, countBytesOnly);
+}
+
+void TetMesh::exportMeshGeometry(vector<Vec3d> & vertices, vector<Vec4i> & tets) const
+{
+  exportMeshGeometry(vertices);
+  tets.resize(getNumElements());
+  for(int i = 0; i < getNumElements(); i++)
+    tets[i] = Vec4i(getVertexIndices(i));
 }
 
 void TetMesh::computeElementMassMatrix(int el, double * massMatrix) const
@@ -207,27 +252,32 @@ void TetMesh::computeElementMassMatrix(int el, double * massMatrix) const
 */
 }
 
-double TetMesh::getTetVolume(Vec3d * a, Vec3d * b, Vec3d * c, Vec3d * d)
+double TetMesh::getSignedTetVolume(const Vec3d & a, const Vec3d & b, const Vec3d & c, const Vec3d & d)
 {
-  // volume = 1/6 * | (a-d) . ((b-d) x (c-d)) |
-  return (1.0 / 6 * fabs( dot(*a - *d, cross(*b - *d, *c - *d)) ));
+  return 1.0 / 6 * getTetDeterminant(a, b, c, d);
+}
+
+double TetMesh::getTetVolume(const Vec3d & a, const Vec3d & b, const Vec3d & c, const Vec3d & d)
+{
+  // volume = 1/6 * | (d-a) . ((b-a) x (c-a)) |
+  return (1.0 / 6 * fabs(getTetDeterminant(a, b, c, d))); 
 }
 
 double TetMesh::getElementVolume(int el) const
 {
-  Vec3d * a = getVertex(el, 0);
-  Vec3d * b = getVertex(el, 1);
-  Vec3d * c = getVertex(el, 2);
-  Vec3d * d = getVertex(el, 3);
+  const Vec3d & a = getVertex(el, 0);
+  const Vec3d & b = getVertex(el, 1);
+  const Vec3d & c = getVertex(el, 2);
+  const Vec3d & d = getVertex(el, 3);
   return getTetVolume(a, b, c, d);
 }
 
 void TetMesh::getElementInertiaTensor(int el, Mat3d & inertiaTensor) const
 {
-  Vec3d a = *getVertex(el, 0);
-  Vec3d b = *getVertex(el, 1);
-  Vec3d c = *getVertex(el, 2);
-  Vec3d d = *getVertex(el, 3);
+  Vec3d a = getVertex(el, 0);
+  Vec3d b = getVertex(el, 1);
+  Vec3d c = getVertex(el, 2);
+  Vec3d d = getVertex(el, 3);
 
   Vec3d center = getElementCenter(el);
   a -= center;
@@ -265,69 +315,29 @@ bool TetMesh::containsVertex(int el, Vec3d pos) const // true if given element c
   return ((weights[0] >= 0) && (weights[1] >= 0) && (weights[2] >= 0) && (weights[3] >= 0));
 }
 
-void TetMesh::computeBarycentricWeights(int el, Vec3d pos, double * weights) const
+void TetMesh::computeBarycentricWeights(const Vec3d tetVtxPos[4], const Vec3d & pos, double weights[4])
 {
-/*
-       |x1 y1 z1 1|
-  D0 = |x2 y2 z2 1|
-       |x3 y3 z3 1|
-       |x4 y4 z4 1|
-
-       |x  y  z  1|
-  D1 = |x2 y2 z2 1|
-       |x3 y3 z3 1|
-       |x4 y4 z4 1|
-
-       |x1 y1 z1 1|
-  D2 = |x  y  z  1|
-       |x3 y3 z3 1|
-       |x4 y4 z4 1|
-
-       |x1 y1 z1 1|
-  D3 = |x2 y2 z2 1|
-       |x  y  z  1|
-       |x4 y4 z4 1|
-
-       |x1 y1 z1 1|
-  D4 = |x2 y2 z2 1|
-       |x3 y3 z3 1|
-       |x  y  z  1|
-
-  wi = Di / D0
-*/
-
-  Vec3d vtx[4];
-  for(int i=0; i<4; i++)
-    vtx[i] = *getVertex(el,i);
-
-  double D[5];
-  D[0] = getTetDeterminant(&vtx[0], &vtx[1], &vtx[2], &vtx[3]);
-
-  for(int i=1; i<=4; i++)
-  {
-    Vec3d buf[4];
-    for(int j=0; j<4; j++)
-      buf[j] = vtx[j];
-    buf[i-1] = pos;
-    D[i] = getTetDeterminant(&buf[0], &buf[1], &buf[2], &buf[3]);
-    weights[i-1] = D[i] / D[0];
-  }
+  return computeBarycentricWeights(tetVtxPos[0], tetVtxPos[1], tetVtxPos[2], tetVtxPos[3], pos, weights);
 }
 
-double TetMesh::getTetDeterminant(Vec3d * a, Vec3d * b, Vec3d * c, Vec3d * d)
+void TetMesh::computeBarycentricWeights(const Vec3d & tetVtxPos0, const Vec3d & tetVtxPos1, const Vec3d & tetVtxPos2, const Vec3d & tetVtxPos3, 
+    const Vec3d & pos, double weights[4])
 {
-  // computes the determinant of the 4x4 matrix
-  // [ a 1 ]
-  // [ b 1 ]
-  // [ c 1 ]
-  // [ d 1 ]
+  getTetBarycentricWeights(pos, tetVtxPos0, tetVtxPos1, tetVtxPos2, tetVtxPos3, weights);
+}
 
-  Mat3d m0 = Mat3d(*b, *c, *d);
-  Mat3d m1 = Mat3d(*a, *c, *d);
-  Mat3d m2 = Mat3d(*a, *b, *d);
-  Mat3d m3 = Mat3d(*a, *b, *c);
+void TetMesh::computeBarycentricWeights(int el, const Vec3d & pos, double * weights) const
+{
+  Vec3d vtx[4];
+  for(int i=0; i<4; i++)
+    vtx[i] = getVertex(el,i);
 
-  return (-det(m0) + det(m1) - det(m2) + det(m3));
+  computeBarycentricWeights(vtx, pos, weights);
+}
+
+double TetMesh::getTetDeterminant(const Vec3d & a, const Vec3d & b, const Vec3d & c, const Vec3d & d)
+{
+  return ::getTetDeterminant(a, b, c, d);
 }
 
 void TetMesh::interpolateGradient(int element, const double * U, int numFields, Vec3d pos, double * grad) const
@@ -341,7 +351,7 @@ void TetMesh::computeGradient(int element, const double * U, int numFields, doub
   // grad is constant inside a tet
   Vec3d vtx[4];
   for(int i=0; i<4; i++)
-    vtx[i] = *getVertex(element,i);
+    vtx[i] = getVertex(element,i);
 
   // form M =
   // [b - a]
@@ -422,7 +432,9 @@ void TetMesh::orient()
 {
   for(int el=0; el<numElements; el++)
   {
-    double det = dot(*(getVertex(el, 1)) - *(getVertex(el, 0)), cross(*(getVertex(el, 2)) - *(getVertex(el, 0)), *(getVertex(el, 3)) - *(getVertex(el, 0))));
+    // a, b, c, d
+    // dot(d - a, cross(b - a, c - a))
+    double det = getTetDeterminant(getVertex(el, 0), getVertex(el, 1), getVertex(el, 2), getVertex(el, 3));
 
     if (det < 0)
     {
@@ -435,5 +447,4 @@ void TetMesh::orient()
     }
   }
 }
-
 

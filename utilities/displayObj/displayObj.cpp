@@ -1,20 +1,24 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.0                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * OBJ mesh visualization utility                                        *
- * Copyright (C) 2007 CMU, 2009 MIT, 2013 USC                            *
+ * Copyright (C) 2007 CMU, 2009 MIT, 2018 USC                            *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -55,7 +59,7 @@
   #ifndef M_PI
     #define M_PI 3.141592654 
   #endif
-  #include "GL\glew.h"
+  #include "GL/glew.h"
 #endif
 
 #include "openGL-headers.h"
@@ -68,7 +72,7 @@
 #include "lighting.h"
 #include "glslPhong.h"
 #include "camera.h"
-#include "loadList.h"
+#include "listIO.h"
 
 std::set<int> * selectedVerticesSet;  // each object will have a set storing selected vertices
 std::set<int> * selectedGroupsSet; // each object will have a set storing selected groups
@@ -441,7 +445,7 @@ void Initialize()
   // init camera for 3d viewing
   // bogusFlag, r, Theta, Phi, focusX, focusY, focusZ, upX, upY, upZ, sensitivity, camera2worldScalingFactor
   //camera = new SphericalCamera(radius, 1.0 * 270 / 360 * (2*PI), 1.0 * 30 / 360 * (2*PI), centerV, upVector,  0.05, 1);
-  camera = new SphericalCamera(radius, 1.0 * 270 / 360 * (2*PI), 1.0 * 10 / 360 * (2*PI), centerV, upVector,  0.05, 1);
+  camera = new SphericalCamera(radius, 1.0 * 270 / 360 * (2*M_PI), 1.0 * 10 / 360 * (2*M_PI), centerV, upVector,  0.05, 1);
 
   // clear to white
   glClearColor(256.0 / 256, 256.0 / 256, 256.0 / 256, 0.0);
@@ -1348,8 +1352,8 @@ int main( int argc, char** argv )
   if (strcmp(renderExternalVerticesZeroIndexedFilename,"__default") != 0)
   {
     // parse the 0-indexed list
-    LoadList list;
-    int * vertexIndices;
+    ListIO list;
+    int * vertexIndices = NULL;
     list.load(renderExternalVerticesZeroIndexedFilename, &numExternalVertices, &vertexIndices);
     printf("Detected %d external vertices to render.\n", numExternalVertices);
     renderExternalVertices = true;
@@ -1368,8 +1372,8 @@ int main( int argc, char** argv )
   if (strcmp(renderExternalVerticesOneIndexedFilename,"__default") != 0)
   {
     // parse the 1-indexed list
-    LoadList list;
-    int * vertexIndices;
+    ListIO list;
+    int * vertexIndices = NULL;
     list.load(renderExternalVerticesOneIndexedFilename, &numExternalVertices, &vertexIndices);
     //list.printList(numExternalVertices, vertexIndices);
     printf("Detected %d external vertices to render.\n", numExternalVertices);

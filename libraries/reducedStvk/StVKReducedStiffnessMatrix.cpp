@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "reducedStvk" library , Copyright (C) 2007 CMU, 2009 MIT              *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -26,12 +30,12 @@
  *                                                                       *
  *************************************************************************/
 
-#include "lapack-headers.h"
-#if defined(_WIN32) || defined(WIN32) || defined(linux)
-  #include "mkl_service.h"
-#endif
 #include "matrixMacros.h"
 #include "StVKReducedStiffnessMatrix.h"
+#include "lapack-headers.h"
+#if defined(USE_INTEL_MKL)
+  #include "mkl_service.h"
+#endif
 
 StVKReducedStiffnessMatrix::~StVKReducedStiffnessMatrix()
 {
@@ -238,7 +242,7 @@ void StVKReducedStiffnessMatrix::Evaluate(double * q, double * Rq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux)
+    #if defined(USE_INTEL_MKL)
       mkl_max_threads = mkl_get_max_threads();
       mkl_dynamic = mkl_get_dynamic();
       mkl_set_num_threads(1);
@@ -298,7 +302,7 @@ void StVKReducedStiffnessMatrix::Evaluate(double * q, double * Rq)
 
   if (useSingleThread)
   {
-    #if defined(_WIN32) || defined(WIN32) || defined(linux)
+    #if defined(USE_INTEL_MKL)
       mkl_set_num_threads(mkl_max_threads);
       mkl_set_dynamic(mkl_dynamic);
     #elif defined(__APPLE__)
