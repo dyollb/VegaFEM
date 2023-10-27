@@ -1,8 +1,8 @@
 #include "vega-config.h"
 
 #if defined(VEGA_USE_INTEL_MKL)
-  #include "mkl_cblas.h"
   #include "mkl_types.h"
+  #include "mkl_cblas.h"
   #include "mkl_lapack.h"
   #include "mkl_blas.h"
 #elif defined(WIN32) || defined(_WIN32) || defined(linux) || defined(__linux__)
