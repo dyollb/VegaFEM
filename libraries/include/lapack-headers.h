@@ -1,6 +1,7 @@
 #include "vega-config.h"
 
 #if defined(VEGA_USE_INTEL_MKL)
+  #define MKL_INT int
   #include "mkl_types.h"
   #include "mkl_cblas.h"
   #include "mkl_lapack.h"
