@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "imageIO" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC        *
+ * "imageIO" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC        *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Yili Zhao, Jernej Barbic                                 *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -54,6 +58,7 @@ public:
   inline unsigned int getHeight() { return height; }
   inline unsigned int getBytesPerPixel() { return bytesPerPixel; }
   inline unsigned char * getPixels() { return pixels; }
+  inline unsigned char getPixel(int x, int y, int channel) { return pixels[(y * width + x) * bytesPerPixel + channel]; }
 
   // error codes
   typedef enum { OK, INVALID_FILE_FORMAT, IO_ERROR, MEMORY_ERROR, OTHER_ERROR } errorType;

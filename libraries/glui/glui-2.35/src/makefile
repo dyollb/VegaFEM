@@ -35,8 +35,7 @@ LIBS    = -lXmu -lXext -lX11 -lXi -lm
 # CPPFLAGS += -I/usr/X11R6/include -DGLUI_FREEGLUT
 
 # (3) GLUT
-LIBGLUT   = -framework OpenGL -framework GLUT
-#LIBGLUT   = -L/usr/X11R6/lib -lglut
+LIBGLUT   = -L/usr/X11R6/lib -lglut
 CPPFLAGS += -I/usr/X11R6/include
 
 #######################################

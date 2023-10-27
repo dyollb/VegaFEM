@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "isotropic hyperelastic FEM" library , Copyright (C) 2015 USC         *
+ * "isotropic hyperelastic FEM" library , Copyright (C) 2018 USC         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Fun Shing Sin                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -37,7 +41,8 @@ IsotropicHyperelasticFEM::IsotropicHyperelasticFEM(TetMesh * tetMesh_, Isotropic
   isotropicMaterial(isotropicMaterial_),
   inversionThreshold(inversionThreshold_),
   addGravity(addGravity_), 
-  g(g_)
+  g(g_),
+  enforceSPD(false)
 {
   if (tetMesh->getNumElementVertices() != 4)
   {
@@ -65,10 +70,10 @@ IsotropicHyperelasticFEM::IsotropicHyperelasticFEM(TetMesh * tetMesh_, Isotropic
   restVerticesPosition = (double*) malloc (sizeof(double) * 3 * numVertices);
   for (int i=0; i<numVertices; i++)
   {
-    Vec3d * v = tetMesh->getVertex(i);
-    restVerticesPosition[3*i+0] = (*v)[0];
-    restVerticesPosition[3*i+1] = (*v)[1];
-    restVerticesPosition[3*i+2] = (*v)[2];
+    Vec3d v = tetMesh->getVertex(i);
+    restVerticesPosition[3*i+0] = v[0];
+    restVerticesPosition[3*i+1] = v[1];
+    restVerticesPosition[3*i+2] = v[2];
   }
 
   ComputeTetVolumes();
@@ -173,22 +178,19 @@ IsotropicHyperelasticFEM::~IsotropicHyperelasticFEM()
 /*
   Compute the elastic strain energy given the current vertex displacements u
 */
-double IsotropicHyperelasticFEM::ComputeEnergy(double * u)
+double IsotropicHyperelasticFEM::ComputeEnergy(const double * u)
 {
-  int computationMode = COMPUTE_ENERGY;
-  double energy;
-  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, &energy, NULL, NULL, computationMode);
+  double energy = 0.0;
+  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, &energy, NULL, NULL);
   return energy;
 }
 
 /*
   Compute the internal forces given the current vertex displacements u
 */
-void IsotropicHyperelasticFEM::ComputeForces(double * u, double * internalForces)
+void IsotropicHyperelasticFEM::ComputeForces(const double * u, double * internalForces)
 {
-  //printf("Entering IsotropicHyperelasticFEM::ComputeForces\n"); 
-  int computationMode = IsotropicHyperelasticFEM::COMPUTE_INTERNALFORCES;
-  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, internalForces, NULL, computationMode);
+  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, internalForces, NULL);
 }
 
 /*
@@ -232,27 +234,89 @@ void IsotropicHyperelasticFEM::GetStiffnessMatrixTopology(SparseMatrix ** tangen
 /*
   Get the tangent stiffness matrix given the current vertex displacement u
 */
-void IsotropicHyperelasticFEM::GetTangentStiffnessMatrix(double * u, SparseMatrix * tangentStiffnessMatrix)
+void IsotropicHyperelasticFEM::GetTangentStiffnessMatrix(const double * u, SparseMatrix * tangentStiffnessMatrix)
 {
-  int computationMode = COMPUTE_TANGENTSTIFFNESSMATRIX;
-  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, NULL, tangentStiffnessMatrix, computationMode);
+  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, NULL, tangentStiffnessMatrix);
 }
 
 /*
   Get both internal forces and stiffness matrix, given the current vertex displacement u.
   Note: this is economic, because we have to compute the deformation gradients and do SVD on them only once.
 */
-void IsotropicHyperelasticFEM::GetForceAndTangentStiffnessMatrix(double * u, double * internalForce, SparseMatrix * tangentStiffnessMatrix)
+void IsotropicHyperelasticFEM::GetForceAndTangentStiffnessMatrix(const double * u, double * internalForce, SparseMatrix * tangentStiffnessMatrix)
 {
-  int computationMode = COMPUTE_INTERNALFORCES | COMPUTE_TANGENTSTIFFNESSMATRIX;
-  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, internalForce, tangentStiffnessMatrix, computationMode);
+  GetEnergyAndForceAndTangentStiffnessMatrixHelper(u, NULL, internalForce, tangentStiffnessMatrix);
+}
+
+void IsotropicHyperelasticFEM::ComputeTetVolume(int el)
+{
+  tetVolumes[el] = TetMesh::getTetVolume(
+    tetMesh->getVertex(el, 0), tetMesh->getVertex(el, 1), 
+    tetMesh->getVertex(el, 2), tetMesh->getVertex(el, 3)
+  );
+  //tetVolumes[el] = TetMesh::getTetVolume(&restVerticesPosition[3*tetMesh->getVertexIndex(el, 0)], &restVerticesPosition[3*tetMesh->getVertexIndex(el, 1)], 
+    //                                     &restVerticesPosition[3*tetMesh->getVertexIndex(el, 2)], &restVerticesPosition[3*tetMesh->getVertexIndex(el, 3)]);
 }
 
 void IsotropicHyperelasticFEM::ComputeTetVolumes()
 {
   int numElements = tetMesh->getNumElements();
   for (int el=0; el<numElements; el++)
-    tetVolumes[el] = TetMesh::getTetVolume(tetMesh->getVertex(el, 0), tetMesh->getVertex(el, 1), tetMesh->getVertex(el, 2), tetMesh->getVertex(el, 3));
+    ComputeTetVolume(el);
+}
+
+/*
+  Compute the area-weighted vertex normals.
+  See p3 section 4 of [Irving 04] for more details.
+*/
+void IsotropicHyperelasticFEM::ComputeAreaWeightedVertexNormals(int el)
+{
+  Vec3d va = tetMesh->getVertex(el, 0);
+  Vec3d vb = tetMesh->getVertex(el, 1);
+  Vec3d vc = tetMesh->getVertex(el, 2);
+  Vec3d vd = tetMesh->getVertex(el, 3);
+
+  // compute normals for the four faces: acb, adc, abd, bcd
+  Vec3d acbNormal = cross(vc-va, vb-va); 
+  Vec3d adcNormal = cross(vd-va, vc-va); 
+  Vec3d abdNormal = cross(vb-va, vd-va); 
+  Vec3d bcdNormal = cross(vc-vb, vd-vb); 
+
+  // if the tet vertices abcd form a positive orientation, the normals are now correct
+  // otherwise, we need to flip them
+  double orientation = dot(vd-va, cross(vb-va, vc-va));
+  if (orientation < 0)
+  {
+    acbNormal *= -1.0;
+    adcNormal *= -1.0;
+    abdNormal *= -1.0;
+    bcdNormal *= -1.0;
+  }
+
+  // triangle area = 0.5 |u x v|
+  double acbArea = 0.5 * sqrt(dot(acbNormal, acbNormal));
+  double adcArea = 0.5 * sqrt(dot(adcNormal, adcNormal));
+  double abdArea = 0.5 * sqrt(dot(abdNormal, abdNormal));
+  double bcdArea = 0.5 * sqrt(dot(bcdNormal, bcdNormal));
+
+  // normalize
+  acbNormal.normalize();
+  adcNormal.normalize();
+  abdNormal.normalize();
+  bcdNormal.normalize();
+
+  areaWeightedVertexNormals[4*el+0] = (acbArea * acbNormal + adcArea * adcNormal + abdArea * abdNormal) / 3.0;
+  areaWeightedVertexNormals[4*el+1] = (acbArea * acbNormal + abdArea * abdNormal + bcdArea * bcdNormal) / 3.0;
+  areaWeightedVertexNormals[4*el+2] = (acbArea * acbNormal + adcArea * adcNormal + bcdArea * bcdNormal) / 3.0;
+  areaWeightedVertexNormals[4*el+3] = (adcArea * adcNormal + abdArea * abdNormal + bcdArea * bcdNormal) / 3.0;
+
+  /*
+    printf("--- areaWeightedVertexNormals ---\n");
+    printf("a = "); areaWeightedVertexNormals[4*el+0].print();
+    printf("b = "); areaWeightedVertexNormals[4*el+1].print();
+    printf("c = "); areaWeightedVertexNormals[4*el+2].print();
+    printf("d = "); areaWeightedVertexNormals[4*el+3].print();
+  */
 }
 
 /*
@@ -264,53 +328,32 @@ void IsotropicHyperelasticFEM::ComputeAreaWeightedVertexNormals()
   int numElements = tetMesh->getNumElements();
   for (int el=0; el<numElements; el++)
   {
-    Vec3d * va = tetMesh->getVertex(el, 0);
-    Vec3d * vb = tetMesh->getVertex(el, 1);
-    Vec3d * vc = tetMesh->getVertex(el, 2);
-    Vec3d * vd = tetMesh->getVertex(el, 3);
-
-    // compute normals for the four faces: acb, adc, abd, bcd
-    Vec3d acbNormal = cross(*vc-*va, *vb-*va); 
-    Vec3d adcNormal = cross(*vd-*va, *vc-*va); 
-    Vec3d abdNormal = cross(*vb-*va, *vd-*va); 
-    Vec3d bcdNormal = cross(*vc-*vb, *vd-*vb); 
-
-    // if the tet vertices abcd form a positive orientation, the normals are now correct
-    // otherwise, we need to flip them
-    double orientation = dot(*vd-*va, cross(*vb-*va, *vc-*va));
-    if (orientation < 0)
-    {
-      acbNormal *= -1.0;
-      adcNormal *= -1.0;
-      abdNormal *= -1.0;
-      bcdNormal *= -1.0;
-    }
-
-    // triangle area = 0.5 |u x v|
-    double acbArea = 0.5 * sqrt(dot(acbNormal, acbNormal));
-    double adcArea = 0.5 * sqrt(dot(adcNormal, adcNormal));
-    double abdArea = 0.5 * sqrt(dot(abdNormal, abdNormal));
-    double bcdArea = 0.5 * sqrt(dot(bcdNormal, bcdNormal));
-
-    // normalize
-    acbNormal.normalize();
-    adcNormal.normalize();
-    abdNormal.normalize();
-    bcdNormal.normalize();
-
-    areaWeightedVertexNormals[4*el+0] = (acbArea * acbNormal + adcArea * adcNormal + abdArea * abdNormal) / 3.0;
-    areaWeightedVertexNormals[4*el+1] = (acbArea * acbNormal + abdArea * abdNormal + bcdArea * bcdNormal) / 3.0;
-    areaWeightedVertexNormals[4*el+2] = (acbArea * acbNormal + adcArea * adcNormal + bcdArea * bcdNormal) / 3.0;
-    areaWeightedVertexNormals[4*el+3] = (adcArea * adcNormal + abdArea * abdNormal + bcdArea * bcdNormal) / 3.0;
-
-    /*
-      printf("--- areaWeightedVertexNormals ---\n");
-      printf("a = "); areaWeightedVertexNormals[4*el+0].print();
-      printf("b = "); areaWeightedVertexNormals[4*el+1].print();
-      printf("c = "); areaWeightedVertexNormals[4*el+2].print();
-      printf("d = "); areaWeightedVertexNormals[4*el+3].print();
-    */
+    ComputeAreaWeightedVertexNormals(el);
   }
+}
+
+/*
+  Compute the inverse of the Dm matrices.
+  The Dm is a 3x3 matrix where the columns are the edge vectors of a
+  tet in rest configuration. See p3 section 3 of [Irving 04] for more details.
+ */
+void IsotropicHyperelasticFEM::PrepareDeformGrad(int el)
+{
+  Vec3d va = tetMesh->getVertex(el, 0);
+  Vec3d vb = tetMesh->getVertex(el, 1);
+  Vec3d vc = tetMesh->getVertex(el, 2);
+  Vec3d vd = tetMesh->getVertex(el, 3);
+
+  Vec3d dm1 = vd - va;
+  Vec3d dm2 = vd - vb;
+  Vec3d dm3 = vd - vc;
+
+  Mat3d tmp(dm1[0], dm2[0], dm3[0], dm1[1], dm2[1], dm3[1], dm1[2], dm2[2], dm3[2]);
+  //printf("--- dm ---\n");
+  //tmp.print();
+  dmInverses[el] = inv(tmp);
+  //printf("--- inv(dm) ---\n");
+  //dmInverses[e].print();
 }
 
 /*
@@ -323,21 +366,7 @@ void IsotropicHyperelasticFEM::PrepareDeformGrad()
   int numElements = tetMesh->getNumElements();
   for (int el=0; el<numElements; el++)
   {
-    Vec3d * va = tetMesh->getVertex(el, 0);
-    Vec3d * vb = tetMesh->getVertex(el, 1);
-    Vec3d * vc = tetMesh->getVertex(el, 2);
-    Vec3d * vd = tetMesh->getVertex(el, 3);
-
-    Vec3d dm1 = *vd - *va;
-    Vec3d dm2 = *vd - *vb;
-    Vec3d dm3 = *vd - *vc;
-
-    Mat3d tmp(dm1[0], dm2[0], dm3[0], dm1[1], dm2[1], dm3[1], dm1[2], dm2[2], dm3[2]);
-    //printf("--- dm ---\n");
-    //tmp.print();
-    dmInverses[el] = inv(tmp);
-    //printf("--- inv(dm) ---\n");
-    //dmInverses[e].print();
+    PrepareDeformGrad(el);
   }
 }
 
@@ -345,15 +374,15 @@ void IsotropicHyperelasticFEM::PrepareDeformGrad()
   This function computes the energy, internal forces, and/or tangent stiffness matrix, as requested by the computationMode.
   It is declared virtual and is overloaded in the multicore (MT) derived class.
 */
-int IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelper(double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode)
+int IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelper(const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix)
 {
-  GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(u, energy, internalForces, tangentStiffnessMatrix, computationMode); // resets the energy, internal forces and/or tangent stiffness matrix to zero
-  int code = GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(0, tetMesh->getNumElements(), u, energy, internalForces, tangentStiffnessMatrix, computationMode);
+  GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(u, energy, internalForces, tangentStiffnessMatrix); // resets the energy, internal forces and/or tangent stiffness matrix to zero
+  int code = GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(0, tetMesh->getNumElements(), u, energy, internalForces, tangentStiffnessMatrix);
   return code;
 }
 
 // initializes the energy, internal forces, and/or stiffness matrix
-void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode)
+void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperPrologue(const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix)
 {
   // compute the current deformed positions
   int numVertices = tetMesh->getNumVertices();
@@ -361,10 +390,10 @@ void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperP
   for (int i=0; i<numVertices3; i++)
     currentVerticesPosition[i] = restVerticesPosition[i] + u[i];
 
-  if (computationMode & COMPUTE_ENERGY)
+  if (energy)
     *energy = 0.0;
 
-  if (computationMode & COMPUTE_INTERNALFORCES)
+  if (internalForces)
   {
     // reset internal forces
     if (addGravity)
@@ -372,8 +401,8 @@ void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperP
       for (int i=0; i<numVertices; i++)
       {
         internalForces[3*i+0] = 0.0;
-        internalForces[3*i+1] = 0.0; // gravity acts in negative-y direction; internal forces are opposite of external forces
-        internalForces[3*i+2] = g; // gravity acts in negative-z direction; internal forces are opposite of external forces
+        internalForces[3*i+1] = g; // gravity acts in negative-y direction; internal forces are opposite of external forces
+        internalForces[3*i+2] = 0.0;
       }
     }
     else
@@ -383,13 +412,142 @@ void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperP
     }
   }
 
-  if (computationMode & COMPUTE_TANGENTSTIFFNESSMATRIX)
+  if (tangentStiffnessMatrix)
   {
     // reset stiffness matrix
     tangentStiffnessMatrix->ResetToZero();
   }
 }
 
+void IsotropicHyperelasticFEM::GetElementLocalEnergyAndForceAndMatrix(int el, const double * u, double * energy, double * internalForces, double * tangentStiffnessMatrix)
+{
+  // since ComputeElementLocalData assumes current positions are updated, we should update current positions here
+  for(int i = 0; i < 4; i++)
+  {
+    int index = 3 * tetMesh->getVertexIndex(el, i);
+    Vec3d pos = Vec3d(&restVerticesPosition[index]) + Vec3d(&u[index]);
+    pos.convertToArray(&currentVerticesPosition[index]);
+  }
+  ComputeElementLocalData(el, u, energy, internalForces, tangentStiffnessMatrix);
+}
+
+int IsotropicHyperelasticFEM::ComputeElementLocalData(int el, const double * u, double * energy, double internalForces[12], double tangentStiffnessMatrix[144])
+{
+  int exitCode = 0;
+  //  Compute the deformation gradient F.
+  //  F = Ds * inv(Dm), where Ds is a 3x3 matrix where
+  //  the columns are edge vectors of a tet in the current deformation,
+  //  and Dm is a 3x3 matrix where the columns are edge vectors of a tet in
+  //  the rest configuration. See p3 section 3 of [Irving 04] for more details.
+  int vaIndex = 3 * tetMesh->getVertexIndex(el, 0);
+  int vbIndex = 3 * tetMesh->getVertexIndex(el, 1);
+  int vcIndex = 3 * tetMesh->getVertexIndex(el, 2);
+  int vdIndex = 3 * tetMesh->getVertexIndex(el, 3);
+
+  Vec3d va(currentVerticesPosition[vaIndex], currentVerticesPosition[vaIndex+1], currentVerticesPosition[vaIndex+2]);
+  Vec3d vb(currentVerticesPosition[vbIndex], currentVerticesPosition[vbIndex+1], currentVerticesPosition[vbIndex+2]);
+  Vec3d vc(currentVerticesPosition[vcIndex], currentVerticesPosition[vcIndex+1], currentVerticesPosition[vcIndex+2]);
+  Vec3d vd(currentVerticesPosition[vdIndex], currentVerticesPosition[vdIndex+1], currentVerticesPosition[vdIndex+2]);
+
+  Vec3d ds1 = vd - va;
+  Vec3d ds2 = vd - vb;
+  Vec3d ds3 = vd - vc;
+  
+  Mat3d tmp(ds1[0], ds2[0], ds3[0], ds1[1], ds2[1], ds3[1], ds1[2], ds2[2], ds3[2]);
+  Fs[el] = tmp * dmInverses[el];
+
+  /*
+    The deformation gradient has now been computed and is available in Fs[el]
+  */
+
+  // perform modified SVD on the deformation gradient
+  Mat3d & F = Fs[el];
+  Mat3d & U = Us[el];
+  Mat3d & V = Vs[el];
+  Vec3d & Fhat = Fhats[el];
+  int modifiedSVD = 1;
+  if (SVD(F, U, Fhat, V, SVD_singularValue_eps, modifiedSVD) != 0)
+  {
+    printf("error in diagonalization, el=%d\n", el);
+    exitCode = 1;
+  }
+
+  /*
+    SVD for the deformation gradient has now been computed.
+    It is available in Us[el], Fhats[el], Vs[el].
+  */
+
+  // clamp fHat if below the principal stretch threshold
+  double fHat[3];
+  int clamped = 0;
+  for(int i = 0; i < 3; i++)
+  {
+    if(Fhats[el][i] < inversionThreshold)
+    {
+      //dropBelowThreshold = true;
+      Fhats[el][i] = inversionThreshold;
+      clamped |= (1 << i);
+    }
+  }
+  fHat[0] = Fhats[el][0];
+  fHat[1] = Fhats[el][1];
+  fHat[2] = Fhats[el][2];
+  clamped = 0; // disable clamping
+
+  // query the user-provided isotropic material to compute the strain energy
+  if (energy)
+    *energy = tetVolumes[el] * ComputeEnergyFromStretches(el, fHat);
+
+  if (internalForces)
+  {
+    /*
+      --- Now compute the internal forces ---
+  
+      The first Piola-Kirchhoff stress P is calculated by equation 1 
+      in p3 section 5 of [Irving 04]. Once we have P, we can compute
+      the nodal forces G=PBm as described in section 4 of [Irving 04]
+    */
+
+    double pHat[3];
+    ComputeDiagonalPFromStretches(el, fHat, pHat); // calls the isotropic material to compute the diagonal P tensor, given the principal stretches in fHat
+    Vec3d pHatv(pHat);
+
+    // This is the 1st equation in p3 section 5 of [Irving 04]
+    // P = Us[el] * diag(pHat) * trans(Vs[el])
+    Mat3d P = Us[el];
+    P.multiplyDiagRight(pHatv);
+    P = P * trans(Vs[el]);
+
+    
+    //  we compute the nodal forces by G=PBm as described in 
+    //  section 4 of [Irving 04]
+    // multiply by 4 because each tet has 4 vertices
+    Vec3d forceUpdateA = P * areaWeightedVertexNormals[4 * el + 0];
+    Vec3d forceUpdateB = P * areaWeightedVertexNormals[4 * el + 1];
+    Vec3d forceUpdateC = P * areaWeightedVertexNormals[4 * el + 2];
+    Vec3d forceUpdateD = P * areaWeightedVertexNormals[4 * el + 3];
+    forceUpdateA.convertToArray(&internalForces[0]);
+    forceUpdateB.convertToArray(&internalForces[3]);
+    forceUpdateC.convertToArray(&internalForces[6]);
+    forceUpdateD.convertToArray(&internalForces[9]);
+  }
+
+  if (tangentStiffnessMatrix)
+  {
+    /*
+      --- Now compute the tangent stiffness matrix ---
+
+      This implementation is based on section 6 & 7 of [Teran 05].
+      We go through each tet in the mesh and compute the element
+      stiffness matrix K, and then we put the entries of K into
+      the correct position of the final stiffness matrix (i.e.,
+      the stiffness matrix for the entire mesh)
+     */
+    ComputeTetK(el, tangentStiffnessMatrix, clamped);
+  }
+
+  return exitCode;
+}
 /*
   This is the workhorse of the IFEM class. It computes strain energy,
   internal forces, and/or the tangent stiffness matrix for a subset of the elements, startEl <= el < endEl
@@ -400,157 +558,53 @@ void IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperP
   and the stiffness matrix computation is based on 
   section 6 & 7 of [Teran 05].
 */
-int IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(int startEl, int endEl, double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix, int computationMode)
+int IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse(int startEl, int endEl, const double * u, double * energy, double * internalForces, SparseMatrix * tangentStiffnessMatrix)
 {
   //printf("Entering IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperWorkhorse\n"); 
   //printf("inversionThreshold=%G\n", inversionThreshold);
 
   int numElementVertices = tetMesh->getNumElementVertices();
-  double energyResult = 0.0;
   //bool dropBelowThreshold = false; // becomes true when a principal stretch falls below the threshold; only used for printing out informative comments
   
   // traverse the elements and assemble strain energy, internal forces and tangent stiffness matrix
   int exitCode = 0;
+  double fElement[12];
+  double KElement[144];
+  double eleEnergy = 0.0;
   for (int el=startEl; el<endEl; el++)
   {
-    /*
-      Compute the deformation gradient F.
-      F = Ds * inv(Dm), where Ds is a 3x3 matrix where
-      the columns are edge vectors of a tet in the current deformation,
-      and Dm is a 3x3 matrix where the columns are edge vectors of a tet in
-      the rest configuration. See p3 section 3 of [Irving 04] for more details.
-     */
-    int vaIndex = 3 * tetMesh->getVertexIndex(el, 0);
-    int vbIndex = 3 * tetMesh->getVertexIndex(el, 1);
-    int vcIndex = 3 * tetMesh->getVertexIndex(el, 2);
-    int vdIndex = 3 * tetMesh->getVertexIndex(el, 3);
+    exitCode |= ComputeElementLocalData(el, u, (energy ? &eleEnergy : NULL), (internalForces ? fElement : NULL), (tangentStiffnessMatrix ? KElement : NULL));
 
-    Vec3d va(currentVerticesPosition[vaIndex], currentVerticesPosition[vaIndex+1], currentVerticesPosition[vaIndex+2]);
-    Vec3d vb(currentVerticesPosition[vbIndex], currentVerticesPosition[vbIndex+1], currentVerticesPosition[vbIndex+2]);
-    Vec3d vc(currentVerticesPosition[vcIndex], currentVerticesPosition[vcIndex+1], currentVerticesPosition[vcIndex+2]);
-    Vec3d vd(currentVerticesPosition[vdIndex], currentVerticesPosition[vdIndex+1], currentVerticesPosition[vdIndex+2]);
+    if (energy)
+      *energy += eleEnergy;
 
-    Vec3d ds1 = vd - va;
-    Vec3d ds2 = vd - vb;
-    Vec3d ds3 = vd - vc;
-    
-    Mat3d tmp(ds1[0], ds2[0], ds3[0], ds1[1], ds2[1], ds3[1], ds1[2], ds2[2], ds3[2]);
-    Fs[el] = tmp * dmInverses[el];
-    //printf("F =\n");
-    //Fs[el].print();
-
-    /*
-      The deformation gradient has now been computed and is available in Fs[el]
-    */
-
-    // perform modified SVD on the deformation gradient
-    Mat3d & F = Fs[el];
-    Mat3d & U = Us[el];
-    Mat3d & V = Vs[el];
-    Vec3d & Fhat = Fhats[el];
-    int modifiedSVD = 1;
-    if (SVD(F, U, Fhat, V, SVD_singularValue_eps, modifiedSVD) != 0)
+    if (internalForces)
     {
-      printf("error in diagonalization, el=%d\n", el);
-      exitCode = 1;
-    }
-
-    /*
-      SVD for the deformation gradient has now been computed.
-      It is available in Us[el], Fhats[el], Vs[el].
-    */
-
-    // clamp fHat if below the principal stretch threshold
-    double fHat[3];
-    int clamped = 0;
-    for(int i = 0; i < 3; i++)
-    {
-      if(Fhats[el][i] < inversionThreshold)
-      {
-        //dropBelowThreshold = true;
-        Fhats[el][i] = inversionThreshold;
-        clamped |= (1 << i);
-      }
-    }
-    fHat[0] = Fhats[el][0];
-    fHat[1] = Fhats[el][1];
-    fHat[2] = Fhats[el][2];
-    clamped = 0; // disable clamping
-
-    // query the user-provided isotropic material to compute the strain energy
-    if (computationMode & COMPUTE_ENERGY)
-      energyResult += tetVolumes[el] * ComputeEnergyFromStretches(el, fHat);
-
-    if (computationMode & COMPUTE_INTERNALFORCES)
-    {
-      /*
-        --- Now compute the internal forces ---
-    
-        The first Piola-Kirchhoff stress P is calculated by equation 1 
-        in p3 section 5 of [Irving 04]. Once we have P, we can compute
-        the nodal forces G=PBm as described in section 4 of [Irving 04]
-      */
-
-      double pHat[3];
-      ComputeDiagonalPFromStretches(el, fHat, pHat); // calls the isotropic material to compute the diagonal P tensor, given the principal stretches in fHat
-      Vec3d pHatv(pHat);
-  
-      // This is the 1st equation in p3 section 5 of [Irving 04]
-      // P = Us[el] * diag(pHat) * trans(Vs[el])
-      Mat3d P = Us[el];
-      P.multiplyDiagRight(pHatv);
-      P = P * trans(Vs[el]);
-
-      //printf("--- P ---\n");
-      //P.print();
-
-      /*
-        we compute the nodal forces by G=PBm as described in 
-        section 4 of [Irving 04]
-      */
-      // multiply by 4 because each tet has 4 vertices
-      Vec3d forceUpdateA = P * areaWeightedVertexNormals[4 * el + 0];
-      Vec3d forceUpdateB = P * areaWeightedVertexNormals[4 * el + 1];
-      Vec3d forceUpdateC = P * areaWeightedVertexNormals[4 * el + 2];
-      Vec3d forceUpdateD = P * areaWeightedVertexNormals[4 * el + 3];
       // multiply by 3 because each force (at vertex) has 3 components
       int vIndexA = 3 * tetMesh->getVertexIndex(el,0);
       int vIndexB = 3 * tetMesh->getVertexIndex(el,1);
       int vIndexC = 3 * tetMesh->getVertexIndex(el,2);
       int vIndexD = 3 * tetMesh->getVertexIndex(el,3);
 
-      internalForces[vIndexA+0] += forceUpdateA[0];
-      internalForces[vIndexA+1] += forceUpdateA[1];
-      internalForces[vIndexA+2] += forceUpdateA[2];
+      internalForces[vIndexA+0] += fElement[0];
+      internalForces[vIndexA+1] += fElement[1];
+      internalForces[vIndexA+2] += fElement[2];
       
-      internalForces[vIndexB+0] += forceUpdateB[0];
-      internalForces[vIndexB+1] += forceUpdateB[1];
-      internalForces[vIndexB+2] += forceUpdateB[2];
+      internalForces[vIndexB+0] += fElement[3];
+      internalForces[vIndexB+1] += fElement[4];
+      internalForces[vIndexB+2] += fElement[5];
       
-      internalForces[vIndexC+0] += forceUpdateC[0];
-      internalForces[vIndexC+1] += forceUpdateC[1];
-      internalForces[vIndexC+2] += forceUpdateC[2];
+      internalForces[vIndexC+0] += fElement[6];
+      internalForces[vIndexC+1] += fElement[7];
+      internalForces[vIndexC+2] += fElement[8];
       
-      internalForces[vIndexD+0] += forceUpdateD[0];
-      internalForces[vIndexD+1] += forceUpdateD[1];
-      internalForces[vIndexD+2] += forceUpdateD[2];
+      internalForces[vIndexD+0] += fElement[9];
+      internalForces[vIndexD+1] += fElement[10];
+      internalForces[vIndexD+2] += fElement[11];
     }
 
-    if (computationMode & COMPUTE_TANGENTSTIFFNESSMATRIX)
+    if (tangentStiffnessMatrix)
     {
-      /*
-        --- Now compute the tangent stiffness matrix ---
-
-        This implementation is based on section 6 & 7 of [Teran 05].
-        We go through each tet in the mesh and compute the element
-        stiffness matrix K, and then we put the entries of K into
-        the correct position of the final stiffness matrix (i.e.,
-        the stiffness matrix for the entire mesh)
-       */
-
-      double K[144];
-      ComputeTetK(el, K, clamped);
-
       // write matrices in place
       for(int vtxIndexA=0; vtxIndexA<4; vtxIndexA++)
         for(int vtxIndexB=0; vtxIndexB<4; vtxIndexB++)
@@ -565,20 +619,12 @@ int IsotropicHyperelasticFEM::GetEnergyAndForceAndTangentStiffnessMatrixHelperWo
             {
               int row = 3 * vtxA + i;
               int columnIndex = 3 * columnIndexCompressed + j;
-              double * value = &K[ELT(12, 3*vtxIndexA+i, 3*vtxIndexB+j)];
-              
+              double * value = &KElement[ELT(12, 3*vtxIndexA+i, 3*vtxIndexB+j)];
               tangentStiffnessMatrix->AddEntry(row, columnIndex, *value);
             }
         }
     }
   }
-
-  //if (dropBelowThreshold)
-  //  printf("Principal stretch dropped below %f\n", inversionThreshold);
-
-  if (computationMode & COMPUTE_ENERGY)
-    *energy = energyResult;
-
   return exitCode;
 }
 
@@ -959,6 +1005,14 @@ void IsotropicHyperelasticFEM::Compute_dPdF(int el, double dPdF[81], int clamped
   x3113 = beta13;
   x3223 = beta23;
 
+  if (enforceSPD)
+  {
+    FixPositiveIndefiniteness(x1111, x2211, x3311, x2222, x3322, x3333);
+    FixPositiveIndefiniteness(x2121, x2112);
+    FixPositiveIndefiniteness(x3131, x3113);
+    FixPositiveIndefiniteness(x3232, x3223);
+  }
+
   double dPdF_atFhat[81];
   memset(dPdF_atFhat, 0, sizeof(double) * 81);
   dPdF_atFhat[tensor9x9Index(0,0,0,0)] = x1111;
@@ -1080,6 +1134,62 @@ int IsotropicHyperelasticFEM::tensor9x9Index(int i, int j, int m, int n)
   int rowIndex_in9x9Matrix = rowMajorMatrixToTeran[3 * i + j];
   int columnIndex_in9x9Matrix = rowMajorMatrixToTeran[3 * m + n];
   return (9 * rowIndex_in9x9Matrix + columnIndex_in9x9Matrix);
+}
+
+void IsotropicHyperelasticFEM::FixPositiveIndefiniteness(double & B11, double & B12)
+{
+  Vec2d eigenValues(B11 - B12, B11 + B12);
+
+  bool hasNegativeEigenValues = false;
+  for(int i = 0; i < 2; i++)
+  {
+    if (eigenValues[i] < 0)
+      hasNegativeEigenValues = true;
+  }
+
+  if (hasNegativeEigenValues)
+  {
+    if (eigenValues[0] < 0)
+      eigenValues[0] = 0;
+
+    if (eigenValues[1] < 0)
+      eigenValues[1] = 0;
+
+    B11 = 0.5 * ( eigenValues[0] + eigenValues[1]);
+    B12 = 0.5 * (-eigenValues[0] + eigenValues[1]);
+  }
+}
+
+void IsotropicHyperelasticFEM::FixPositiveIndefiniteness(double & A11, double & A12, double & A13, double & A22, double & A23, double & A33)
+{
+  Mat3d mat(A11, A12, A13, A12, A22, A23, A13, A23, A33);
+  Vec3d eigenValues;
+  Vec3d eigenVectors[3];
+  eigen_sym(mat, eigenValues, eigenVectors);
+  bool hasNegativeEigenValues = false;
+  for(int i = 0; i < 3; i++)
+  {
+    if (eigenValues[i] < 0)
+    {
+      hasNegativeEigenValues = true;
+      eigenValues[i] = 0;
+    }
+  }
+
+  if (hasNegativeEigenValues)
+  {
+    Mat3d V(eigenVectors[0][0], eigenVectors[1][0], eigenVectors[2][0],
+            eigenVectors[0][1], eigenVectors[1][1], eigenVectors[2][1],
+            eigenVectors[0][2], eigenVectors[1][2], eigenVectors[2][2]);
+
+    Mat3d newMat = (V.multiplyDiagRight(eigenValues)) * trans(V);
+    A11 = newMat[0][0];
+    A22 = newMat[1][1];
+    A33 = newMat[2][2];
+    A12 = newMat[0][1];
+    A13 = newMat[0][2];
+    A23 = newMat[1][2];
+  }
 }
 
 /*

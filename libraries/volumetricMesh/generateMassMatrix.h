@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
+ * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -47,9 +51,10 @@ public:
   // matrix will be 3*numVertices x 3*numVertices).
   // In order to save some space, set it to false (output matrix will be 
   // numVertices x numVertices).
-  static void computeMassMatrix(VolumetricMesh * volumetricMesh, SparseMatrix ** massMatrix, bool inflate3Dim = false);
+  static void computeMassMatrix(const VolumetricMesh * volumetricMesh, SparseMatrix ** massMatrix, bool inflate3Dim = false);
   // computes the mass belonging to each vertex, by lumping the mass matrix
-  static void computeVertexMasses(VolumetricMesh * volumetricMesh, double * masses);
+  // masses has size of volumetricMesh->getNumVertices() if (inflat3Dim == false) or 3 * n if (inflate3Dim == true)
+  static void computeVertexMasses(const VolumetricMesh * volumetricMesh, double * masses, bool inflate3Dim = false);
 
 protected:
 };

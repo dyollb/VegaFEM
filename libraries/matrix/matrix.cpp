@@ -1,14 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT                   *
+ * "matrix" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
- * Research: Jernej Barbic, Doug L. James, Jovan Popovic                 *
- * Funding: NSF, Link Foundation, Singapore-MIT GAMBIT Game Lab          *
+ * http://www.jernejbarbic.com/vega                                      *
+ *                                                                       *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
+ *           Doug L. James, Jovan Popovic                                *
+ *                                                                       *
+ * Funding: National Science Foundation, Link Foundation,                *
+ *          Singapore-MIT GAMBIT Game Lab,                               *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -25,6 +34,9 @@
 #include "matrix.h"
 #include "matrixIO.h"
 #include "matrixExp.h"
+#include <cassert>
+#include <algorithm>
+using namespace std;
 
 template<class real>
 Matrix<real>::Matrix(const char * filename)
@@ -236,8 +248,26 @@ Matrix<real> & Matrix<real>::operator*= (const real alpha)
 {
   int mn = m * n;
   for(int i=0; i<mn; i++)
-    data[i] *= alpha;   
+    data[i] *= alpha;
   return (*this);
+}
+
+template<class real>
+bool Matrix<real>::operator == (const Matrix<real> & mtx2) const
+{
+  if ((n != mtx2.Getm()) || (n != mtx2.Getn()))
+    return false;
+  int mn = m * n;
+  for(int i = 0; i < mn; i++)
+    if (data[i] != mtx2.data[i])
+      return false;
+  return true;
+}
+
+template<class real>
+bool Matrix<real>::operator != (const Matrix<real> & mtx2) const
+{
+  return !(*this == mtx2);
 }
 
 template<class real>
@@ -252,6 +282,13 @@ real Matrix<real>::MaxAbsEntry() const
   }
   return maxAbsEntry;
 }
+
+template<class real>
+real Matrix<real>::GetFrobeniusNorm() const
+{
+  return VectorNorm(m*n, data);
+}
+
 
 template<class real>
 Matrix<real> & Matrix<real>::InPlaceTranspose()
@@ -332,7 +369,7 @@ int Matrix<real>::EigenDecomposition(Matrix<real> & EigenVectors, Matrix<real> &
 }
 
 template<class real>
-int Matrix<real>::LUSolve(const Matrix<real> & x, const Matrix<real> & rhs)
+int Matrix<real>::LUSolve(Matrix<real> & x, const Matrix<real> & rhs)
 {
   if ((Getm() != Getn()) || (Getm() != x.Getm()) || (x.Getm() != rhs.Getm()) || (x.Getn() != rhs.Getn()) )
   {    
@@ -353,7 +390,7 @@ int Matrix<real>::LUSolve(const Matrix<real> & x, const Matrix<real> & rhs)
   return exitCode;
 }
 
-#ifdef USE_EXPOKIT
+#ifdef VEGA_USE_EXPOKIT
 
 template<class real>
 void Matrix<real>::MExpv(real t, const Matrix<real> & v, Matrix<real> & w)
@@ -391,11 +428,30 @@ int Matrix<real>::Save(const char * filename) const
 }
 
 template<class real>
+int Matrix<real>::Load(const char * filename)
+{
+  if (freeDataInDestructor)
+    free(data);
+  data = NULL;
+  m = n = 0;
+  freeDataInDestructor = true;
+  if (ReadMatrixFromDisk(filename, &m, &n, &data) != 0)
+  {
+    printf("Error loading matrix from %s.\n", filename);
+    m = n = 0;
+    data = NULL;
+    return 1;
+  }
+  return 0;
+}
+
+
+template<class real>
 void Matrix<real>::SetSubmatrix(int I, int J, const Matrix<real> & submatrix)
 {
   int subm = submatrix.Getm();
   int subn = submatrix.Getn();
-  real * subdata = submatrix.GetData();
+  const real * subdata = submatrix.GetData();
 
   if ((I < 0) || (J < 0) || (I + subm > m) || (J + subn > n))
   {
@@ -409,6 +465,24 @@ void Matrix<real>::SetSubmatrix(int I, int J, const Matrix<real> & submatrix)
 }
 
 template<class real>
+void Matrix<real>::GetSubmatrix(int I, int J, Matrix<real> & submatrix) const
+{
+  int subm = submatrix.Getm();
+  int subn = submatrix.Getn();
+  real * subdata = submatrix.GetData();
+
+  if ((I < 0) || (J < 0) || (I + subm > m) || (J + subn > n))
+  {
+    printf("Error: matrix index out of bounds.\n");
+    throw 21;
+  }
+
+  for(int j=0; j<subn; j++)
+    for(int i=0; i<subm; i++)
+      subdata[ELT(subm,i,j)] = data[ELT(m,I+i,J+j)];
+}
+
+template<class real>
 void Matrix<real>::RemoveColumns(int columnStart, int columnEnd)
 {
   // write everything to the right of columnEnd to the left
@@ -416,7 +490,7 @@ void Matrix<real>::RemoveColumns(int columnStart, int columnEnd)
   for(int column=columnEnd; column<n; column++)
   {
     // write column to column-stride
-    memcpy(&data[ELT(m, 0, column-stride)], &data[ELT(m, 0, column)], sizeof(double) * m);
+    memcpy(&data[ELT(m, 0, column-stride)], &data[ELT(m, 0, column)], sizeof(real) * m);
   }
 
   // free the space
@@ -428,22 +502,64 @@ void Matrix<real>::RemoveColumns(int columnStart, int columnEnd)
 template<class real>
 void Matrix<real>::RemoveRows(int rowStart, int rowEnd)
 {
-  InPlaceTransposeMatrix(m, n, data);
-  int mBuf = m;
-  m = n;
-  n = mBuf;
-  RemoveColumns(rowStart, rowEnd);
-  InPlaceTransposeMatrix(m, n, data);
-  mBuf = m;
-  m = n;
-  n = mBuf;
+  assert(0 <= rowStart && rowStart <= rowEnd && rowEnd <= m);
+  int mNew = m - (rowEnd - rowStart);
+  // for i-th column, move consecutive data block from entry (rowEnd, i) to (rowStart, i+1) to the 
+  // target location in the resultant matrix
+  // to avoid potential memory block overlap, we use memmove instead of memcpy; the latter is not safe
+  for(int i = 0, num = n-1; i < num; i++)
+    memmove(data + i*mNew + rowStart, data + i*m + rowEnd, sizeof(real) * mNew);
+
+  // the last column is a special case because the consecutive data block is from (rowEnd, n-1) to (m-1, n-1)
+  if (n >= 1)
+    memmove(data + (n-1)*mNew + rowStart, data + (n-1)*m + rowEnd, sizeof(real) * (m - rowEnd));
+  data = (real*) realloc (data, sizeof(real) * mNew * n);
+  m = mNew;
 }
 
 template<class real>
-void Matrix<real>::RemoveRowsColumns(int columnStart, int columnEnd)
+void Matrix<real>::RemoveRowsColumns(int start, int end)
 {
-  RemoveColumns(columnStart, columnEnd);
-  RemoveRows(columnStart, columnEnd);
+  assert(0 <= start && start <= end);
+  assert(end <= m && end <= n);
+
+  int stride = end - start;
+  int mNew = m - stride;
+  int nNew = n - stride;
+
+  // similar method as in RemoveRows()
+  // for i-th column, move consecutive data block from entry (rowEnd, i) to (rowStart, i+1) to the 
+  // target location in the resultant matrix, until the (start-1) column
+  for(int i = 0, num = start-1; i < num; i++)
+    memmove(data + i*mNew + start, data + i*m + end, sizeof(real) * mNew);
+
+  // the (start-1) column is a special case because the consecutive data block is from (rowEnd, start-1)
+  // to (m-1, start-1)
+  if (start >= 1)
+    memmove(data + (start-1)*mNew + start, data + (start-1)*m + end, sizeof(real) * (m - end));
+
+  // we skip columns from start to end-1
+  // if we have columns after end
+  if (end < n)
+  {
+    // move data from (end, 0) to (end, start-1) to the tagert location
+    memmove(data + start*mNew, data + end*m, sizeof(real) * start);
+
+    // fot the i-th column after the end column, move the consecutive data block as well
+    for(int i = start, num = nNew-1; i < num; i++)
+      memmove(data + i*mNew + start, data + (i+stride)*m + end, sizeof(real) * mNew);
+  
+    // process the special case at the last column
+    if (nNew >= 1 && n >= 1)
+      memmove(data + (nNew-1)*mNew+start, data + (n-1)*m + end, sizeof(real) * (m - end));
+  }
+
+  data = (real*) realloc (data, sizeof(real) * mNew * nNew);
+  m = mNew;
+  n = nNew;
+
+//  RemoveColumns(start, end);
+//  RemoveRows(start, end);
 }
 
 template<class real>
@@ -463,22 +579,16 @@ void Matrix<real>::AppendColumns(const Matrix<real> & columns)
 template<class real>
 void Matrix<real>::AppendRows(const Matrix<real> & rows)
 {
-  if (rows.Getn() != n)
+  if (rows.n != n)
   {
     printf("Error: mismatch in number of columns in AppendRows.\n");
     throw 42;
   }
 
-  InPlaceTransposeMatrix(m, n, data);
-  int mBuf = m;
-  m = n;
-  n = mBuf;
-  Matrix<real> rowsT = Transpose(rows);
-  AppendColumns(rowsT);
-  InPlaceTransposeMatrix(m, n, data);
-  mBuf = m;
-  m = n;
-  n = mBuf;
+  int oldm = m;
+  Resize(0,0, m + rows.m, n);
+  for(int i = 0; i < n; i++)
+    memcpy(data + i*m + oldm, rows.data + i*rows.m, sizeof(real) * rows.m);
 }
 
 template<class real>
@@ -517,81 +627,55 @@ void Matrix<real>::AppendRowsColumns(const Matrix<real> & bottomLeftBlock, const
   AppendRows(blockMatrix);
 }
 
-// === float ===
-template Matrix<float>::Matrix(const char * filename);
-template Matrix<float>::Matrix(int m, int n, const float * data,
-                     bool makeInternalDataCopy, bool freeDataInDestructor);
-template Matrix<float>::Matrix(int m, int n, bool freeDataInDestructor);
-template Matrix<float>::Matrix(int m, int n, float constEntry, bool freeDataInDestructor);
-template Matrix<float>::Matrix(int m, float diagonal, bool freeDataInDestructor);
-template Matrix<float>::Matrix(int m, const float * diagonal, bool freeDataInDestructor);
-template Matrix<float>::Matrix (int m, const Matrix<float> & vec, bool freeDataInDestructor);
-template Matrix<float>::Matrix(const Matrix<float> & mtx2);
-template Matrix<float>::~Matrix();
-template const Matrix<float> Matrix<float>::operator+ (const Matrix<float> & mtx2) const;
-template const Matrix<float> Matrix<float>::operator- (const Matrix<float> & mtx2) const;
-template const Matrix<float> Matrix<float>::operator* (const Matrix<float> & mtx2) const;
-template const Matrix<float> Matrix<float>::MultiplyT(const Matrix<float> & mtx2) const;
-template Matrix<float> & Matrix<float>::operator= (const Matrix<float> & mtx2);
-template Matrix<float> & Matrix<float>::operator+= (const Matrix<float> & mtx2);
-template Matrix<float> & Matrix<float>::operator-= (const Matrix<float> & mtx2);
-template Matrix<float> & Matrix<float>::operator*= (const Matrix<float> & mtx2);
-template Matrix<float> & Matrix<float>::operator*= (const float alpha);
-template float Matrix<float>::MaxAbsEntry() const;
-template Matrix<float> & Matrix<float>::InPlaceTranspose();
-template void Matrix<float>::SymmetricEigenDecomposition(Matrix<float> & Q, Matrix<float> & Lambda);
-template void Matrix<float>::SVD(Matrix<float> & U, Matrix<float> & Sigma, Matrix<float> & VT);
-template int Matrix<float>::EigenDecomposition(Matrix<float> & EigenVectors, Matrix<float> & LambdaRe, Matrix<float> & LambdaIm);
-template int Matrix<float>::LUSolve(const Matrix<float> & x, const Matrix<float> & rhs);
-#ifdef USE_EXPOKIT
-  template void Matrix<float>::MExpv(float t, const Matrix<float> & v, Matrix<float> & w);
-#endif
-template void Matrix<float>::Print(int numDigits) const; 
-template int Matrix<float>::Save(const char * filename) const;
-template void Matrix<float>::SetSubmatrix(int I, int J, const Matrix<float> & submatrix);
-template void Matrix<float>::RemoveColumns(int columnStart, int columnEnd);
-template void Matrix<float>::RemoveRows(int rowStart, int rowEnd);
-template void Matrix<float>::RemoveRowsColumns(int columnStart, int columnEnd);
-template void Matrix<float>::AppendRows(const Matrix<float> & rows);
-template void Matrix<float>::AppendColumns(const Matrix<float> & columns);
-template void Matrix<float>::AppendRowsColumns(const Matrix<float> & bottomLeftBlock, const Matrix<float> & topRightBlock, const Matrix<float> & bottomRightBlock);
+template<class real>
+void Matrix<real>::AppendRowsColumns(int numAddedRows, int numAddedCols)
+{
+  assert(numAddedRows >= 0 && numAddedCols >= 0);
+  int newRows = m + numAddedRows;
+  int newCols = n + numAddedCols;
 
-// === double ===
-template Matrix<double>::Matrix(const char * filename);
-template Matrix<double>::Matrix(int m, int n, const double * data,
-                     bool makeInternalDataCopy, bool freeDataInDestructor);
-template Matrix<double>::Matrix(int m, int n, bool freeDataInDestructor);
-template Matrix<double>::Matrix(int m, int n, double constEntry, bool freeDataInDestructor);
-template Matrix<double>::Matrix(int m, double diagonal, bool freeDataInDestructor);
-template Matrix<double>::Matrix(int m, const double * diagonal, bool freeDataInDestructor);
-template Matrix<double>::Matrix (int m, const Matrix<double> & vec, bool freeDataInDestructor);
-template Matrix<double>::Matrix(const Matrix<double> & mtx2);
-template Matrix<double>::~Matrix();
-template const Matrix<double> Matrix<double>::operator+ (const Matrix<double> & mtx2) const;
-template const Matrix<double> Matrix<double>::operator- (const Matrix<double> & mtx2) const;
-template const Matrix<double> Matrix<double>::operator* (const Matrix<double> & mtx2) const;
-template Matrix<double> & Matrix<double>::operator*= (const double alpha);
-template const Matrix<double> Matrix<double>::MultiplyT(const Matrix<double> & mtx2) const;
-template Matrix<double> & Matrix<double>::operator= (const Matrix<double> & mtx2);
-template Matrix<double> & Matrix<double>::operator+= (const Matrix<double> & mtx2);
-template Matrix<double> & Matrix<double>::operator-= (const Matrix<double> & mtx2);
-template Matrix<double> & Matrix<double>::operator*= (const Matrix<double> & mtx2);
-template double Matrix<double>::MaxAbsEntry() const;
-template Matrix<double> & Matrix<double>::InPlaceTranspose();
-template void Matrix<double>::SymmetricEigenDecomposition(Matrix<double> & Q, Matrix<double> & Lambda);
-template void Matrix<double>::SVD(Matrix<double> & U, Matrix<double> & Sigma, Matrix<double> & VT);
-template int Matrix<double>::EigenDecomposition(Matrix<double> & EigenVectors, Matrix<double> & LambdaRe, Matrix<double> & LambdaIm);
-template int Matrix<double>::LUSolve(const Matrix<double> & x, const Matrix<double> & rhs);
-#ifdef USE_EXPOKIT
-  template void Matrix<double>::MExpv(double t, const Matrix<double> & v, Matrix<double> & w);
-#endif
-template void Matrix<double>::Print(int numDigits) const;
-template int Matrix<double>::Save(const char * filename) const;
-template void Matrix<double>::SetSubmatrix(int I, int J, const Matrix<double> & submatrix);
-template void Matrix<double>::RemoveColumns(int columnStart, int columnEnd);
-template void Matrix<double>::RemoveRows(int rowStart, int rowEnd);
-template void Matrix<double>::RemoveRowsColumns(int columnStart, int columnEnd);
-template void Matrix<double>::AppendRows(const Matrix<double> & rows);
-template void Matrix<double>::AppendColumns(const Matrix<double> & columns);
-template void Matrix<double>::AppendRowsColumns(const Matrix<double> & bottomLeftBlock, const Matrix<double> & topRightBlock, const Matrix<double> & bottomRightBlock);
+  real * newdata = (real*) calloc(newRows * newCols, sizeof(real));
 
+  for(int col = 0; col < n; col++)
+    memcpy(&newdata[newRows*col], &data[m*col], sizeof(real) * m);
+
+  free(data);
+  data = newdata;
+  m = newRows;
+  n = newCols;
+}
+
+template<class real>
+void Matrix<real>::Resize(int newRows, int newCols)
+{
+  assert(newRows >= 0 && newCols >= 0);
+
+  real * newdata = (real*) calloc(newRows * newCols, sizeof(real));
+  free(data);
+  data = newdata;
+  m = newRows;
+  n = newCols;
+}
+
+template<class real>
+void Matrix<real>::Resize(int i, int j, int newRows, int newCols)
+{
+  assert(newRows >= 0 && newCols >= 0);
+
+  real * newdata = (real*) calloc(newRows * newCols, sizeof(real));
+  int colStartToCopy = max(j, 0);
+  int numColsToCopy = min(j+newCols, n) - colStartToCopy;
+  int rowStartToCopy = max(i, 0);
+  int numRowsToCopy = min(i+newRows, m) - rowStartToCopy;
+
+  for(int col = 0; col < numColsToCopy; col++)
+    memcpy(&newdata[newRows*col], &data[m*col + colStartToCopy + rowStartToCopy], sizeof(real) * numRowsToCopy);
+
+  free(data);
+  data = newdata;
+  m = newRows;
+  n = newCols;
+}
+
+template class Matrix<float>;
+template class Matrix<double>;

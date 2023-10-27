@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "quaternion" library , Copyright (C) 2007 CMU                         *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -38,7 +42,7 @@
 //Transforms the given matrix (assumed orthogonal, specified 
 //in row-major order) into one of the two corresponding quaternions.
 template <typename real>
-Quaternion<real> Quaternion<real>::Matrix2Quaternion(real * R)
+Quaternion<real> Quaternion<real>::Matrix2Quaternion(const real R[9])
 {
 /* 
    Order of matrix elements is row-major:
@@ -105,6 +109,6 @@ Quaternion<real> Quaternion<real>::Matrix2Quaternion(real * R)
   return q;
 }
 
-template Quaternion<double> Quaternion<double>::Matrix2Quaternion(double * R);
-template Quaternion<float> Quaternion<float>::Matrix2Quaternion(float * R);
+template Quaternion<double> Quaternion<double>::Matrix2Quaternion(const double R[9]);
+template Quaternion<float> Quaternion<float>::Matrix2Quaternion(const float R[9]);
 

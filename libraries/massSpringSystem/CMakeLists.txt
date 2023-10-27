@@ -5,11 +5,7 @@ set(SRCS
     massSpringSystemFromObjMesh.cpp
     massSpringSystemFromObjMeshConfigFile.cpp
     massSpringSystemFromTetMesh.cpp
-    massSpringSystemFromTetMeshConfigFile.cpp)
-
-if(GLUT_FOUND)
-    list(APPEND SRCS renderSprings.cpp)
-endif()
-  
+    massSpringSystemFromTetMeshConfigFile.cpp
+    renderSprings.cpp)
 
 collect_sources(VEGA_SOURCES ${SRCS})

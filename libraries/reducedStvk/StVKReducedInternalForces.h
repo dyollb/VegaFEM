@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
  * "reducedStvk" library , Copyright (C) 2007 CMU, 2009 MIT              *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -54,11 +58,8 @@ public:
   // r : dimension of the basis
   // U : the basis matrix (it must be of size 3*n x r, where n is the number of vertices in the volumetric mesh)
   // volumetricMesh, precomputedABCDIntegrals: same meaning as in StVKInternalForces.h
-  // initOnly:
-  //   0: normal mode (default, recommended)
-  //   1: do not actually run the computation (advanced low-level mode; must then manually call ProcessElements)
   // note: this computation can last for several minutes, depending on r and n
-  StVKReducedInternalForces(int r, double * U, VolumetricMesh * volumetricMesh, StVKElementABCD * precomputedABCDIntegrals, int initOnly=0, bool addGravity=false, double g=9.81, int verbose=1);
+  StVKReducedInternalForces(int r, double * U, VolumetricMesh * volumetricMesh, StVKElementABCD * precomputedABCDIntegrals, bool addGravity=false, double g=9.81, int verbose=1);
 
   // load the previously computed coefficients from a file 
   // if r>=0 is specified, only up to first r modes will be used; if r=-1 (default), all modes will be used
@@ -135,15 +136,11 @@ public:
   inline double * GetQuadraticTermsBuffer() { return quadraticCoef_; }
   inline double * GetCubicTermsBuffer() { return cubicCoef_; }
 
-  // computes the contributions from voxels startElements to endElement-1
-  void ProcessElements(int startElement, int endElement, double ** target=NULL);
-
-  void UseSingleThread(int useSingleThread);
+  void UseSingleThreadInEvaluation(int useSingleThread_);
 
   // makes shallow copies of all pointers, except those initialized by InitBuffers
   // use this if you want to Evaluate two or more identical models (i.e., two copies of an object) in parallel (to ensure thread safety)
-  // you do not need to use this if you are Evaluating a single model in parallel (e.g., using the MT derived class)
-  StVKReducedInternalForces * ShallowClone();
+  StVKReducedInternalForces * ShallowClone(int deepCloneGravityBuffer=0);
 
   // saves a model with r=0
   static int SaveEmptyCub(const char * filename);
@@ -206,6 +203,9 @@ protected:
   void InitGravity(VolumetricMesh * volumetricMesh_=NULL, double * U_=NULL);
 
   void InitComputation(int r, double * U, VolumetricMesh * volumetricMesh);
+
+  // computes the contributions from voxels startElements to endElement-1
+  void ProcessElements(int startElement, int endElement, double ** target=NULL);
 
   void GetSizes(int r, int * linearSize, int * quadraticSize, int * cubicSize);
   void SetSizes(int r);

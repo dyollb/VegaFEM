@@ -1,4 +1,4 @@
-set(SRCS 
+set(SRCS
     reducedLinearForceModel.cpp
     reducedLinearStVKForceModel.cpp
     reducedMassSpringSystemForceModel.cpp

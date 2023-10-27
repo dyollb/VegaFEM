@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "sceneObject" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC    *
+ * "sceneObject" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC    *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Daniel Schroeder                         *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -33,22 +37,11 @@
 #include <float.h>
 #include "sceneObject.h"
 #include "objMeshRender.h"
-#include "objMeshEncode.h"
 
 SceneObject::SceneObject(const char * filename):
   mesh(NULL), meshRender(NULL), displayList(0), displayListExists(false), displayListEdges(0), displayListEdgesExists(false)
 { 
-  int verbose = 0;
-  mesh = new ObjMesh(std::string(filename), ObjMesh::ASCII, verbose);
-
-  int encStart = strlen(filename) - 4;
-  if ((encStart > 0) && (strcmp(&filename[encStart], ".enc") == 0))
-  {
-    // must decode
-    printf("Decoding mesh.\n");
-    objMeshDecode(mesh);
-    printf("Decoded mesh.\n");
-  }
+  mesh = new ObjMesh(filename);
 
   Construct();
 }
@@ -105,12 +98,12 @@ void SceneObject::PurgeDisplayList()
 void SceneObject::BuildDisplayList()
 {
   GLenum errorCode;
-  const GLubyte * errorString;
   
   errorCode = glGetError();
   if (errorCode != GL_NO_ERROR)
   {
-    errorString = gluErrorString(errorCode);
+    //const GLubyte * errorString;
+    //errorString = gluErrorString(errorCode);
     //printf("OpenGL Error (start of BuildDisplayList): %s\n", errorString);
   }
 
@@ -129,13 +122,14 @@ void SceneObject::BuildDisplayList()
   errorCode = glGetError();
   if (errorCode != GL_NO_ERROR)
   {
-    errorString = gluErrorString(errorCode);
+    //errorString = gluErrorString(errorCode);
+    //const GLubyte * errorString;
     //printf("OpenGL Error (end of BuildDisplayList): %s\n", errorString);
   }
 }
 
 // assumes pre-existing face normals
-// second parameter is treshold angle for hard edges
+// second parameter is threshold angle for hard edges
 void SceneObject::BuildVertexNormals(double thresholdAngle)
 {
   //do stuff with structure
@@ -248,7 +242,22 @@ void SceneObject::RenderFacesAndEdges()
 
 void SceneObject::RenderEdgesInGroup(const char * groupName)
 {
-  meshRender->renderGroupEdges(groupName);
+  RenderEdgesInGroup(mesh->getGroupIndex(groupName));
+}
+
+void SceneObject::RenderEdgesInGroup(int groupIndex)
+{
+  meshRender->render(OBJMESHRENDER_EDGES, renderMode, groupIndex);
+}
+
+void SceneObject::RenderGroup(const char * groupName)
+{
+  RenderGroup(mesh->getGroupIndex(groupName));
+}
+
+void SceneObject::RenderGroup(int groupIndex)
+{
+  meshRender->render(OBJMESHRENDER_TRIANGLES, renderMode, groupIndex);
 }
 
 void SceneObject::RenderVertices(int numVertices, int * vertexList)
@@ -287,16 +296,43 @@ int SceneObject::GetClosestVertex(Vec3d & queryPos, double * distance, double * 
 }
 
 // highlights vertex i, i=0,1,2,...,n-1
-void SceneObject::HighlightVertex(int i)
+void SceneObject::HighlightVertex(int i, const Vec3d & color, double pointSize) const
 {
-  glColor3f(0,1,0);
-  glPointSize(8.0);
+  glColor3f(color[0],color[1],color[2]);
+  glPointSize(pointSize);
 
   Vec3d pos = mesh->getPosition(i);
 
   glBegin(GL_POINTS);
     glVertex3f(pos[0], pos[1], pos[2]);
   glEnd();
+}
+
+void SceneObject::EnableCustomColor()
+{
+  renderMode = renderMode | OBJMESHRENDER_CUSTOMCOLOR;
+}
+
+void SceneObject::DisableCustomColor()
+{
+  renderMode = renderMode & (~OBJMESHRENDER_CUSTOMCOLOR);
+}
+
+void SceneObject::SetCustomColor(const std::vector<Vec3d> & colors)
+{
+  meshRender->setCustomColors(colors);
+}
+
+void SceneObject::EnableFlatFaces()
+{
+  renderMode = renderMode & (~OBJMESHRENDER_SMOOTH);
+  renderMode = renderMode | OBJMESHRENDER_FLAT;
+}
+
+void SceneObject::DisableFlatFaces()
+{
+  renderMode = renderMode & (~OBJMESHRENDER_FLAT);
+  renderMode = renderMode | OBJMESHRENDER_SMOOTH;
 }
 
 bool SceneObject::AreTexturesEnabled()

@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC *
+ * "volumetricMesh" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code authors: Jernej Barbic, Yijing Li                                *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -54,6 +58,7 @@
 #include <string>
 #include <map>
 #include "minivector.h"
+#include "boundingBox.h"
 
 class VolumetricMesh
 {
@@ -91,6 +96,7 @@ public:
   // all parameters are output parameters
   // vertices and elements will be allocated inside the routine
   void exportMeshGeometry(int * numVertices, double ** vertices, int * numElements = NULL, int * numElementVertices = NULL, int ** elements = NULL) const;
+  void exportMeshGeometry(std::vector<Vec3d> & vertices) const;
 
   // === vertex and element access ===
 
@@ -104,27 +110,38 @@ public:
   static elementType getElementType(void * fin, int memoryLoad = 0);
 
   inline int getNumVertices() const { return numVertices; }
-  inline Vec3d * getVertex(int i) const { return vertices[i]; }
-  inline Vec3d * getVertex(int element, int vertex) const { return vertices[elements[element][vertex]]; }
+  inline Vec3d & getVertex(int i) { return vertices[i]; }
+  inline const Vec3d & getVertex(int i) const { return vertices[i]; }
+  inline Vec3d & getVertex(int element, int vertex) { return vertices[elements[element][vertex]]; }
+  inline const Vec3d & getVertex(int element, int vertex) const { return vertices[elements[element][vertex]]; }
   inline int getVertexIndex(int element, int vertex) const { return elements[element][vertex]; }
-  inline Vec3d ** getVertices() const { return vertices;} // advanced, internal datastructure
+  inline const int * getVertexIndices(int element) const { return elements[element]; }
+  inline Vec3d * getVertices() { return vertices; } // advanced, internal datastructure
+  inline const Vec3d * getVertices() const { return vertices; }
   inline int getNumElements() const { return numElements; }
   inline int getNumElementVertices() const { return numElementVertices; } 
+  void renumberVertices(const std::vector<int> & permutation); // renumbers the vertices using the provided permutation
+  inline void setVertex(int i, const Vec3d & pos) { vertices[i] = pos; } // set the position of a vertex
 
   // === materials access === 
 
   inline int getNumMaterials() const { return numMaterials; }
-  inline Material * getMaterial(int i) const { return materials[i]; }
-  inline Material * getElementMaterial(int el) const { return materials[elementMaterial[el]]; }
-  void setMaterial(int i, const Material * material); // sets i-th material to "material"
-  void setSingleMaterial(double E, double nu, double density); // erases all materials and creates a single material for the entire mesh
+  inline const Material * getMaterial(int i) const { return materials[i]; }
+  inline const Material * getElementMaterial(int el) const { return materials[elementMaterial[el]]; }
   static void getDefaultMaterial(double * E, double * nu, double * density);
 
   inline int getNumSets() const { return numSets; }
-  inline Set * getSet(int i) const { return sets[i]; }
+  inline const Set * getSet(int i) const { return sets[i]; }
 
   inline int getNumRegions() const { return numRegions; }
-  inline Region * getRegion(int i) const { return regions[i]; }
+  inline const Region * getRegion(int i) const { return regions[i]; }
+
+  // === materials editing ===
+  inline Material * getMaterial(int i) { return materials[i]; }
+  inline Material * getElementMaterial(int el) { return materials[elementMaterial[el]]; }
+  void setMaterial(int i, const Material * material); // sets i-th material to "material"
+  void setSingleMaterial(double E, double nu, double density); // erases all materials and creates a single material for the entire mesh
+  void addMaterial(const Material * material, const Set & newSet, bool removeEmptySets, bool removeEmptyMaterials);
 
   // mass density of an element
   double getElementDensity(int el) const { return materials[elementMaterial[el]]->getDensity(); }
@@ -146,6 +163,7 @@ public:
 
   // centroid is the geometric center of all vertices; radius is the tightest fitting sphere centered at the centroid
   void getMeshGeometricParameters(Vec3d & centroid, double * radius) const;
+  BoundingBox getBoundingBox() const;
 
   // mesh 1-neighborhood queries
   void getVerticesInElements(std::vector<int> & elements, std::vector<int> & vertices) const;
@@ -167,7 +185,7 @@ public:
   virtual void getElementEdges(int el, int * edgeBuffer) const = 0; // edgeBuffer must be pre-allocated, of size 2 x numElementEdges()
 
   // (permanently) applies the deformation to the vertices of the mesh
-  void applyDeformation(double * u);
+  void applyDeformation(const double * u);
   void applyLinearTransformation(double * pos, double * R); // transforms every vertex as X |--> pos + R * X (R must be given row-major)
 
   // === submesh creation ===
@@ -210,14 +228,14 @@ public:
   int generateContainingElements(int numTargetLocations, const double * targetLocations, int ** elements, int useClosestElementIfOutside=1, int verbose=0) const; 
   static int getNumInterpolationElementVertices(const char * filename); // looks at the first line of "filename" to determine "numElementVertices" for this particular interpolant
   static int loadInterpolationWeights(const char * filename, int numTargetLocations, int numElementVertices, int ** vertices, double ** weights); // ASCII version; returns 0 on success
-  static int saveInterpolationWeights(const char * filename, int numTargetLocations, int numElementVertices, int * vertices, double * weights); // ASCII version
+  static int saveInterpolationWeights(const char * filename, int numTargetLocations, int numElementVertices, const int * vertices, const double * weights); // ASCII version
   static int loadInterpolationWeightsBinary(const char * filename, int * numTargetLocations, int * numElementVertices, int ** vertices, double ** weights); // binary version; returns 0 on success
-  static int saveInterpolationWeightsBinary(const char * filename, int numTargetLocations, int numElementVertices, int * vertices, double * weights); // binary version
+  static int saveInterpolationWeightsBinary(const char * filename, int numTargetLocations, int numElementVertices, const int * vertices, const double * weights); // binary version
   static int loadInterpolationWeightsBinary(FILE * fin, int * numTargetLocations, int * numElementVertices, int ** vertices, double ** weights); // binary version; returns 0 on success
-  static int saveInterpolationWeightsBinary(FILE * fout, int numTargetLocations, int numElementVertices, int * vertices, double * weights); // binary version
+  static int saveInterpolationWeightsBinary(FILE * fout, int numTargetLocations, int numElementVertices, const int * vertices, const double * weights); // binary version
 
   // computes barycentric weights of the given position with respect to the given element
-  virtual void computeBarycentricWeights(int element, Vec3d pos, double * weights) const = 0;
+  virtual void computeBarycentricWeights(int element, const Vec3d & pos, double * weights) const = 0;
 
   // computes the gradient of a 3D vector field (specified at the volumetric mesh vertices), at the location "pos"
   // "numFields" fields can be interpolated simultaneously; each is given as one column of the U matrix
@@ -242,8 +260,10 @@ public:
     inline std::string getName() const;
     inline int getNumElements() const;
     inline void getElements(std::set<int> & elements) const;
+    inline const std::set<int> & getElements() const;
     inline bool isMember(int element) const;
 
+    inline std::set<int> & getElements();
     inline void insert(int element);
     inline void clear();
 
@@ -295,6 +315,8 @@ public:
     Region(int materialIndex, int setIndex);
     inline int getMaterialIndex() const;
     inline int getSetIndex() const;
+    inline void setMaterialIndex(int index);
+    inline void setSetIndex(int index);
 
   protected:
     int setIndex, materialIndex;
@@ -306,7 +328,7 @@ public:
 
 protected:
   int numVertices;
-  Vec3d ** vertices;
+  Vec3d * vertices;
 
   int numElementVertices;
   int numElements;
@@ -380,6 +402,8 @@ inline VolumetricMesh::Set::Set(const std::string & name_, const std::set<int> &
 inline std::string VolumetricMesh::Set::getName() const { return name; }
 inline int VolumetricMesh::Set::getNumElements() const { return (int)(this->elements.size()); }
 inline void VolumetricMesh::Set::getElements(std::set<int> & elements) const { elements = this->elements; }
+inline const std::set<int> & VolumetricMesh::Set::getElements() const { return elements; }
+inline std::set<int> & VolumetricMesh::Set::getElements() { return elements; }
 inline bool VolumetricMesh::Set::isMember(int element) const {return (elements.find(element) != elements.end());}
 inline void VolumetricMesh::Set::insert(int element) { elements.insert(element); }
 inline void VolumetricMesh::Set::clear() { elements.clear(); }
@@ -394,6 +418,8 @@ inline void VolumetricMesh::Material::setDensity(double density_) { density = de
 inline VolumetricMesh::Region::Region(int materialIndex_, int setIndex_): setIndex(setIndex_), materialIndex(materialIndex_) {}
 inline int VolumetricMesh::Region::getMaterialIndex() const { return materialIndex; }
 inline int VolumetricMesh::Region::getSetIndex() const { return setIndex; }
+inline void VolumetricMesh::Region::setMaterialIndex(int index) { materialIndex = index; }
+inline void VolumetricMesh::Region::setSetIndex(int index) { setIndex = index; }
 
 #endif
 

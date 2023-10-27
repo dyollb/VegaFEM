@@ -1,3 +1,3 @@
-set(SRCS corotationalLinearFEM.cpp corotationalLinearFEMMT.cpp)
+set(SRCS corotationalLinearFEM.cpp)
 
 collect_sources(VEGA_SOURCES ${SRCS})

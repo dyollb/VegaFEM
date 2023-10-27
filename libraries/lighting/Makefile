@@ -5,18 +5,17 @@ ifndef CLEANFOLDER
 CLEANFOLDER=LIGHTING
 endif
 
-include ../../Makefile-headers/Makefile-header
 R ?= ../..
-
+include $(R)/Makefile-headers/Makefile-header
 
 # the object files to be compiled for this library
-LIGHTING_OBJECTS=lighting.o
+LIGHTING_OBJECTS=lighting.o cameraLighting.o
 
 # the libraries this library depends on
-LIGHTING_LIBS=configFile
+LIGHTING_LIBS=configFile camera
 
 # the headers in this library
-LIGHTING_HEADERS=lighting.h
+LIGHTING_HEADERS=lighting.h cameraLighting.h
 
 LIGHTING_OBJECTS_FILENAMES=$(addprefix $(L)/lighting/, $(LIGHTING_OBJECTS))
 LIGHTING_HEADER_FILENAMES=$(addprefix $(L)/lighting/, $(LIGHTING_HEADERS))

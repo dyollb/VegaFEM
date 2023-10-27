@@ -53,9 +53,7 @@ set(ENABLE_LAPACK95 ON)
 set(ENABLE_CPARDISO ${VEGA_USE_PARDISO})
 find_package(MKL)
 if(MKL_FOUND)
-  message(STATUS "MKL found")
   set(VEGA_USE_INTEL_MKL ON)
-#  list(APPEND VEGA_DEPENDENCIES MKL::MKL)
   list(APPEND VEGA_DEPENDENCIES ${MKL_IMPORTED_TARGETS})
   include_directories(${MKL_INCLUDE_DIRS})
 elseif(${VEGA_USE_PARDISO})
@@ -93,8 +91,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/libraries/include/vega-config.h.in
 
 # select components to build
 set(VEGA_LIBRARIES
+    basicAlgorithms
     clothBW
     configFile
+    constrainedDOFs
     corotationalLinearFEM
     elasticForceModel
     forceModel
@@ -102,15 +102,17 @@ set(VEGA_LIBRARIES
     graph
     hashTable
     imageIO
-    insertRows
     integrator
-#    integratorDense # not needed
+    integratorDense
     integratorSparse
+    interpolationCoordinates
     isotropicHyperelasticFEM
-    loadList
+    laplacianMatrix
+    listIO
     matrix
     massSpringSystem
     matrixIO
+    mesh
     minivector
     modalMatrix
     objMesh
@@ -123,8 +125,8 @@ set(VEGA_LIBRARIES
     rigidBodyDynamics
     sparseMatrix
     sparseSolver
+    stencilForceModel
     stvk
-    uniqueIntegerID
     volumetricMesh)
 
 if(VEGA_USE_GLUT)

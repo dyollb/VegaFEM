@@ -3,7 +3,6 @@ set(SRCS
     homogeneousNeoHookeanIsotropicMaterial.cpp
     homogeneousStVKIsotropicMaterial.cpp
     isotropicHyperelasticFEM.cpp
-    isotropicHyperelasticFEMMT.cpp
     isotropicMaterial.cpp
     isotropicMaterialWithCompressionResistance.cpp
     MooneyRivlinIsotropicMaterial.cpp

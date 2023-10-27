@@ -1,30 +1,36 @@
+/*************************************************************************
+ *                                                                       *
+ * Vega FEM Simulation Library Version 4.0                               *
+ *                                                                       *
+ * "macros" include files, Copyright (C) 2007 CMU, 2009 MIT, 2018 USC    * 
+ * All rights reserved.                                                  *
+ *                                                                       *
+ * Code authors: Jernej Barbic, Yili Zhao                                *
+ * http://www.jernejbarbic.com/vega                                      *
+ *                                                                       *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
+ *           Doug L. James, Jovan Popovic                                *
+ *                                                                       *
+ * Funding: National Science Foundation, Link Foundation,                *
+ *          Singapore-MIT GAMBIT Game Lab,                               *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
+ *                                                                       *
+ * This library is free software; you can redistribute it and/or         *
+ * modify it under the terms of the BSD-style license that is            *
+ * included with this library in the file LICENSE.txt                    *
+ *                                                                       *
+ * This library is distributed in the hope that it will be useful,       *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the file     *
+ * LICENSE.TXT for more details.                                         *
+ *                                                                       *
+ *************************************************************************/
+
 /*
-
-* Copyright (c) 2011, Jernej Barbic, Yili Zhao, University of Southern California
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * Neither the name of University of Southern California, nor the
-*       names of its contributors may be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY JERNEJ BARBIC, YILI ZHAO AND UNIVERSITY OF SOUTHERN CALIFORNIA 
-* ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-* IN NO EVENT SHALL JERNEJ BARBIC, YILI ZHAO OR UNIVERSITY OF SOUTHERN CALIFORNIA BE 
-* LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
   3x3 and 4x4 matrix multiplication macros
 
   This code was used in the following publication:
@@ -224,6 +230,18 @@
   (a)[7] -= (b)[7];\
   (a)[8] -= (b)[8];
 
+// c = a - b
+#define MATRIX_SUBTRACT3X3(a,b,c)\
+  (c)[0] = (a)[0] - (b)[0];\
+  (c)[1] = (a)[1] - (b)[1];\
+  (c)[2] = (a)[2] - (b)[2];\
+  (c)[3] = (a)[3] - (b)[3];\
+  (c)[4] = (a)[4] - (b)[4];\
+  (c)[5] = (a)[5] - (b)[5];\
+  (c)[6] = (a)[6] - (b)[6];\
+  (c)[7] = (a)[7] - (b)[7];\
+  (c)[8] = (a)[8] - (b)[8];
+
 // c = a + b
 #define MATRIX_ADD3X3(a,b,c)\
   (c)[0] = (a)[0] + (b)[0];\
@@ -235,6 +253,18 @@
   (c)[6] = (a)[6] + (b)[6];\
   (c)[7] = (a)[7] + (b)[7];\
   (c)[8] = (a)[8] + (b)[8];
+
+// c = a - b
+#define MATRIX_SUBTRACT3X3(a,b,c)\
+  (c)[0] = (a)[0] - (b)[0];\
+  (c)[1] = (a)[1] - (b)[1];\
+  (c)[2] = (a)[2] - (b)[2];\
+  (c)[3] = (a)[3] - (b)[3];\
+  (c)[4] = (a)[4] - (b)[4];\
+  (c)[5] = (a)[5] - (b)[5];\
+  (c)[6] = (a)[6] - (b)[6];\
+  (c)[7] = (a)[7] - (b)[7];\
+  (c)[8] = (a)[8] - (b)[8];
 
 // c = alpha * a + beta * b
 #define MATRIX_ADDWEIGHTED3X3(alpha,a,beta,b,c)\
@@ -316,6 +346,12 @@
 (B)[3] = (A)[1]; (B)[4] = (A)[4]; (B)[5] = (A)[7];\
 (B)[6] = (A)[2]; (B)[7] = (A)[5]; (B)[8] = (A)[8];
 
+#define MATRIX_TRANSPOSE4X4(A,B)\
+(B)[0] = (A)[0]; (B)[1] = (A)[4]; (B)[2] = (A)[8]; (B)[3]=(A)[12];\
+(B)[4] = (A)[1]; (B)[5] = (A)[5]; (B)[6] = (A)[9]; (B)[7]=(A)[13];\
+(B)[8] = (A)[2]; (B)[9] = (A)[6]; (B)[10] = (A)[10]; (B)[11]=(A)[14];\
+(B)[12] = (A)[3]; (B)[13] = (A)[7]; (B)[14] = (A)[11]; (B)[15]=(A)[15];
+
 // A = u * v^T
 #define VECTOR_TENSOR_PRODUCT3X3(u,v,A)\
 (A)[0] = (u)[0] * (v)[0]; (A)[1] = (u)[0] * (v)[1]; (A)[2] = (u)[0] * (v)[2];\
@@ -355,6 +391,12 @@
 (a)[1] = 0.5 * ((A)[2] - (A)[6]);\
 (a)[2] = 0.5 * ((A)[3] - (A)[1]);
 
+// a = skew( A - A^T )
+#define SKEW_PART_NO_DIV2(A, a)\
+(a)[0] = ((A)[7] - (A)[5]);\
+(a)[1] = ((A)[2] - (A)[6]);\
+(a)[2] = ((A)[3] - (A)[1]);
+
 // a = upper-triangle( 0.5 * (A + A^T) )
 #define SYM_PART(A, a)\
 (a)[0] = ((A)[0]);\
@@ -383,6 +425,81 @@
   (c)[0] += ((a)[1]) * ((b)[2]) - ((b)[1]) * ((a)[2]);\
   (c)[1] += ((b)[0]) * ((a)[2]) - ((a)[0]) * ((b)[2]);\
   (c)[2] += ((a)[0]) * ((b)[1]) - ((b)[0]) * ((a)[1])
+
+// b = a^T, a is 4x3, b is 3x4
+#define MATRIX_TRANSPOSE4X3(a,b)\
+  (b)[0] = (a)[0]; (b)[1] = (a)[3]; (b)[2] = (a)[6]; (b)[3]=(a)[9];\
+  (b)[4] = (a)[1]; (b)[5] = (a)[4]; (b)[6] = (a)[7]; (b)[7]=(a)[10];\
+  (b)[8] = (a)[2]; (b)[9] = (a)[5]; (b)[10] = (a)[8]; (b)[11]=(a)[11];
+
+// b = a
+#define MATRIX_SET4X3(a,b)\
+  (a)[0] = (b)[0]; (a)[1] = (b)[1]; (a)[2] = (b)[2];  (a)[3] = (b)[3];\
+  (a)[4] = (b)[4]; (a)[5] = (b)[5]; (a)[6] = (b)[6];  (a)[7] = (b)[7];\
+  (a)[8] = (b)[8]; (a)[9] = (b)[9]; (a)[10] = (b)[10]; (a)[11] = (b)[11];
+
+//c = a * b, a is 3x4, b is 4x3
+#define MATRIX_MULTIPLY3X4X3(a,b,c)\
+  (c)[0]=(a)[0]*(b)[0]+(a)[1]*(b)[3]+(a)[2]*(b)[6]+(a)[3]*(b)[9];\
+  (c)[1]=(a)[0]*(b)[1]+(a)[1]*(b)[4]+(a)[2]*(b)[7]+(a)[3]*(b)[10];\
+  (c)[2]=(a)[0]*(b)[2]+(a)[1]*(b)[5]+(a)[2]*(b)[8]+(a)[3]*(b)[11];\
+  (c)[3]=(a)[4]*(b)[0]+(a)[5]*(b)[3]+(a)[6]*(b)[6]+(a)[7]*(b)[9];\
+  (c)[4]=(a)[4]*(b)[1]+(a)[5]*(b)[4]+(a)[6]*(b)[7]+(a)[7]*(b)[10];\
+  (c)[5]=(a)[4]*(b)[2]+(a)[5]*(b)[5]+(a)[6]*(b)[8]+(a)[7]*(b)[11];\
+  (c)[6]=(a)[8]*(b)[0]+(a)[9]*(b)[3]+(a)[10]*(b)[6]+(a)[11]*(b)[9];\
+  (c)[7]=(a)[8]*(b)[1]+(a)[9]*(b)[4]+(a)[10]*(b)[7]+(a)[11]*(b)[10];\
+  (c)[8]=(a)[8]*(b)[2]+(a)[9]*(b)[5]+(a)[10]*(b)[8]+(a)[11]*(b)[11];
+
+// a *= scalar
+#define MATRIX_SCALE4X4(a,scalar)\
+  (a)[0] *= (scalar); (a)[1] *= (scalar); (a)[2] *= (scalar); (a)[3] *= (scalar);\
+  (a)[4] *= (scalar); (a)[5] *= (scalar); (a)[6] *= (scalar); (a)[7] *= (scalar);\
+  (a)[8] *= (scalar); (a)[9] *= (scalar); (a)[10] *= (scalar); (a)[11] *= (scalar);\
+  (a)[12] *= (scalar); (a)[13] *= (scalar); (a)[14] *= (scalar); (a)[15] *= (scalar);
+
+// a -= b
+#define MATRIX_SUBTRACTEQUAL4X4(a,b)\
+  (a)[0] -= (b)[0]; (a)[1] -= (b)[1]; (a)[2] -= (b)[2]; (a)[3] -= (b)[3];\
+  (a)[4] -= (b)[4]; (a)[5] -= (b)[5]; (a)[6] -= (b)[6]; (a)[7] -= (b)[7];\
+  (a)[8] -= (b)[8]; (a)[9] -= (b)[9]; (a)[10] -= (b)[10]; (a)[11] -= (b)[11];\
+  (a)[12] -= (b)[12]; (a)[13] -= (b)[13]; (a)[14] -= (b)[14]; (a)[15] -= (b)[15];
+
+// c = a - b
+#define MATRIX_SUBTRACT4X4(a,b,c)\
+  (c)[0] = (a)[0] - (b)[0];\
+  (c)[1] = (a)[1] - (b)[1];\
+  (c)[2] = (a)[2] - (b)[2];\
+  (c)[3] = (a)[3] - (b)[3];\
+  (c)[4] = (a)[4] - (b)[4];\
+  (c)[5] = (a)[5] - (b)[5];\
+  (c)[6] = (a)[6] - (b)[6];\
+  (c)[7] = (a)[7] - (b)[7];\
+  (c)[8] = (a)[8] - (b)[8];\
+  (c)[9] = (a)[9] - (b)[9];\
+  (c)[10] = (a)[10] - (b)[10];\
+  (c)[11] = (a)[11] - (b)[11];\
+  (c)[12] = (a)[12] - (b)[12];\
+  (c)[13] = (a)[13] - (b)[13];\
+  (c)[14] = (a)[14] - (b)[14];\
+  (c)[15] = (a)[15] - (b)[15];
+
+//c = a * b, a is 4x4, b is 4x3
+#define MATRIX_MULTIPLY4X4X3(a,b,c)\
+  (c)[0]=(a)[0]*(b)[0]+(a)[1]*(b)[3]+(a)[2]*(b)[6]+(a)[3]*(b)[9];\
+  (c)[1]=(a)[0]*(b)[1]+(a)[1]*(b)[4]+(a)[2]*(b)[7]+(a)[3]*(b)[10];\
+  (c)[2]=(a)[0]*(b)[2]+(a)[1]*(b)[5]+(a)[2]*(b)[8]+(a)[3]*(b)[11];\
+  (c)[3]=(a)[4]*(b)[0]+(a)[5]*(b)[3]+(a)[6]*(b)[6]+(a)[7]*(b)[9];\
+  (c)[4]=(a)[4]*(b)[1]+(a)[5]*(b)[4]+(a)[6]*(b)[7]+(a)[7]*(b)[10];\
+  (c)[5]=(a)[4]*(b)[2]+(a)[5]*(b)[5]+(a)[6]*(b)[8]+(a)[7]*(b)[11];\
+  (c)[6]=(a)[8]*(b)[0]+(a)[9]*(b)[3]+(a)[10]*(b)[6]+(a)[11]*(b)[9];\
+  (c)[7]=(a)[8]*(b)[1]+(a)[9]*(b)[4]+(a)[10]*(b)[7]+(a)[11]*(b)[10];\
+  (c)[8]=(a)[8]*(b)[2]+(a)[9]*(b)[5]+(a)[10]*(b)[8]+(a)[11]*(b)[11];\
+  (c)[9]=(a)[12]*(b)[0]+(a)[13]*(b)[3]+(a)[14]*(b)[6]+(a)[15]*(b)[9];\
+  (c)[10]=(a)[12]*(b)[1]+(a)[13]*(b)[4]+(a)[14]*(b)[7]+(a)[15]*(b)[10];\
+  (c)[11]=(a)[12]*(b)[2]+(a)[13]*(b)[5]+(a)[14]*(b)[8]+(a)[15]*(b)[11];
+
+#define VECTOR_LENGTH(a)\
+    sqrt((a)[0] * (a)[0] + (a)[1] * (a)[1] + (a)[2] * (a)[2])
 
 #endif
 

@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC     *
+ * "integrator" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC     *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -31,10 +35,10 @@
 #include <string.h>
 #include "matrixIO.h"
 #include "performanceCounter.h"
-#include "insertRows.h"
+#include "constrainedDOFs.h"
 #include "implicitNewmarkSparse.h"
 
-ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int positiveDefiniteSolver_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, double NewmarkBeta, double NewmarkGamma, int numSolverThreads_): IntegratorBaseSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef), positiveDefiniteSolver(positiveDefiniteSolver_), numSolverThreads(numSolverThreads_)
+ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, double NewmarkBeta, double NewmarkGamma, int numSolverThreads_): IntegratorBaseSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef), numSolverThreads(numSolverThreads_)
 {
   this->maxIterations = maxIterations; // maxIterations = 1 for semi-implicit
   this->epsilon = epsilon; 
@@ -72,8 +76,8 @@ ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatri
   systemMatrix->BuildSuperMatrixIndices(numConstrainedDOFs, constrainedDOFs, tangentStiffnessMatrix);
 
   #ifdef PARDISO
-    printf("Creating Pardiso solver. Positive-definite solver: %d. Num threads: %d\n", positiveDefiniteSolver, numSolverThreads);
-    pardisoSolver = new PardisoSolver(systemMatrix, numSolverThreads, positiveDefiniteSolver);
+    printf("Creating Pardiso solver. Num threads: %d\n", numSolverThreads);
+    pardisoSolver = new PardisoSolver(systemMatrix, numSolverThreads, PardisoSolver::REAL_SYM_INDEFINITE);
   #endif
 
   #ifdef PCG
@@ -139,7 +143,7 @@ int ImplicitNewmarkSparse::SetState(double * q_, double * qvel_)
     buffer[i] = -buffer[i] - internalForces[i];
 
   // solve M * qaccel = buffer
-  RemoveRows(r, bufferConstrained, buffer, numConstrainedDOFs, constrainedDOFs);
+  ConstrainedDOFs::RemoveDOFs(r, bufferConstrained, buffer, numConstrainedDOFs, constrainedDOFs);
 
   // use tangentStiffnessMatrix as the buffer place
   tangentStiffnessMatrix->ResetToZero();
@@ -159,7 +163,7 @@ int ImplicitNewmarkSparse::SetState(double * q_, double * qvel_)
   //systemMatrix->Save("A");
 
   #ifdef PARDISO
-    pardisoSolver->ComputeCholeskyDecomposition(systemMatrix);
+    pardisoSolver->FactorMatrix(systemMatrix);
     int info = pardisoSolver->SolveLinearSystem(buffer, bufferConstrained);
     char solverString[16] = "PARDISO";
   #endif
@@ -177,7 +181,7 @@ int ImplicitNewmarkSparse::SetState(double * q_, double * qvel_)
     return 1;
   }
   
-  InsertRows(r, buffer, qaccel, numConstrainedDOFs, constrainedDOFs);
+  ConstrainedDOFs::InsertDOFs(r, buffer, qaccel, numConstrainedDOFs, constrainedDOFs);
 
   return 0;
 }
@@ -309,7 +313,7 @@ int ImplicitNewmarkSparse::DoTimestep()
     }
 
     //tangentStiffnessMatrix->Save("Keff");
-    RemoveRows(r, bufferConstrained, qdelta, numConstrainedDOFs, constrainedDOFs);
+    ConstrainedDOFs::RemoveDOFs(r, bufferConstrained, qdelta, numConstrainedDOFs, constrainedDOFs);
     systemMatrix->AssignSuperMatrix(*tangentStiffnessMatrix);
 
     // solve: systemMatrix * buffer = bufferConstrained
@@ -324,7 +328,7 @@ int ImplicitNewmarkSparse::DoTimestep()
     #endif
 
     #ifdef PARDISO
-      int info = pardisoSolver->ComputeCholeskyDecomposition(systemMatrix);
+      int info = pardisoSolver->FactorMatrix(systemMatrix);
       if (info == 0)
         info = pardisoSolver->SolveLinearSystem(buffer, bufferConstrained);
       char solverString[16] = "PARDISO";
@@ -346,7 +350,7 @@ int ImplicitNewmarkSparse::DoTimestep()
     counterSystemSolveTime.StopCounter();
     systemSolveTime = counterSystemSolveTime.GetElapsedTime();
 
-    InsertRows(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
+    ConstrainedDOFs::InsertDOFs(r, buffer, qdelta, numConstrainedDOFs, constrainedDOFs);
 
 /*
     printf("qdelta:\n");

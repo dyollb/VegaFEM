@@ -1,19 +1,23 @@
 /*************************************************************************
  *                                                                       *
- * Vega FEM Simulation Library Version 2.2                               *
+ * Vega FEM Simulation Library Version 4.0                               *
  *                                                                       *
- * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2015 USC           *
+ * "StVK" library , Copyright (C) 2007 CMU, 2009 MIT, 2018 USC           *
  * All rights reserved.                                                  *
  *                                                                       *
  * Code author: Jernej Barbic                                            *
- * http://www.jernejbarbic.com/code                                      *
+ * http://www.jernejbarbic.com/vega                                      *
  *                                                                       *
- * Research: Jernej Barbic, Fun Shing Sin, Daniel Schroeder,             *
+ * Research: Jernej Barbic, Hongyi Xu, Yijing Li,                        *
+ *           Danyong Zhao, Bohan Wang,                                   *
+ *           Fun Shing Sin, Daniel Schroeder,                            *
  *           Doug L. James, Jovan Popovic                                *
  *                                                                       *
  * Funding: National Science Foundation, Link Foundation,                *
  *          Singapore-MIT GAMBIT Game Lab,                               *
- *          Zumberge Research and Innovation Fund at USC                 *
+ *          Zumberge Research and Innovation Fund at USC,                *
+ *          Sloan Foundation, Okawa Foundation,                          *
+ *          USC Annenberg Foundation                                     *
  *                                                                       *
  * This library is free software; you can redistribute it and/or         *
  * modify it under the terms of the BSD-style license that is            *
@@ -71,12 +75,12 @@ void StVKInternalForces::InitGravity()
   }  
 }
 
-double StVKInternalForces::ComputeEnergy(double * vertexDisplacements)
+double StVKInternalForces::ComputeEnergy(const double * vertexDisplacements)
 {
   return ComputeEnergyContribution(vertexDisplacements, 0, volumetricMesh->getNumElements());
 }
 
-double StVKInternalForces::ComputeEnergyContribution(double * vertexDisplacements, int elementLow, int elementHigh, double * buffer)
+double StVKInternalForces::ComputeEnergyContribution(const double * vertexDisplacements, int elementLow, int elementHigh, double * buffer)
 {
   if (buffer == NULL)
     buffer = this->buffer;
@@ -107,7 +111,7 @@ double StVKInternalForces::ComputeEnergyContribution(double * vertexDisplacement
   return energy;
 }
 
-void StVKInternalForces::ComputeForces(double * vertexDisplacements, double * forces)
+void StVKInternalForces::ComputeForces(const double * vertexDisplacements, double * forces)
 {
   //PerformanceCounter forceCounter;
 
@@ -127,7 +131,7 @@ void StVKInternalForces::ComputeForces(double * vertexDisplacements, double * fo
   //printf("Internal forces: %G\n", forceCounter.GetElapsedTime());
 }
 
-void StVKInternalForces::AddLinearTermsContribution(double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
+void StVKInternalForces::AddLinearTermsContribution(const double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -173,7 +177,7 @@ void StVKInternalForces::AddLinearTermsContribution(double * vertexDisplacements
   precomputedIntegrals->ReleaseElementIterator(elIter);
 }
 
-void StVKInternalForces::AddQuadraticTermsContribution(double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
+void StVKInternalForces::AddQuadraticTermsContribution(const double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -254,7 +258,7 @@ void StVKInternalForces::AddQuadraticTermsContribution(double * vertexDisplaceme
   precomputedIntegrals->ReleaseElementIterator(elIter);
 }
 
-void StVKInternalForces::AddCubicTermsContribution(double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
+void StVKInternalForces::AddCubicTermsContribution(const double * vertexDisplacements, double * forces, int elementLow, int elementHigh)
 {
   if (elementLow < 0)
     elementLow = 0;
@@ -311,9 +315,9 @@ void StVKInternalForces::AddCubicTermsContribution(double * vertexDisplacements,
             forces[3*vertices[c]+1] += force[1];
             forces[3*vertices[c]+2] += force[2];
 */
-            double * qa = &(vertexDisplacements[3*va]);
-            double * qb = &(vertexDisplacements[3*vb]);
-            double * qd = &(vertexDisplacements[3*vd]);
+            const double * qa = &(vertexDisplacements[3*va]);
+            const double * qb = &(vertexDisplacements[3*vb]);
+            const double * qd = &(vertexDisplacements[3*vd]);
             double * force = &(forces[3*vc]);
 
             double dotp = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2]; 

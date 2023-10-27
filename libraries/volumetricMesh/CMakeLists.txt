@@ -1,6 +1,7 @@
-set(SRCS 
+set(SRCS
     computeStiffnessMatrixNullspace.cpp
     cubicMesh.cpp
+    generateGradientMatrix.cpp
     generateInterpolationMatrix.cpp
     generateMassMatrix.cpp
     generateMeshGraph.cpp
@@ -11,7 +12,6 @@ set(SRCS
     volumetricMesh.cpp
     volumetricMeshDeformationGradient.cpp
     volumetricMeshENuMaterial.cpp
-    volumetricMeshExtensions.cpp
     volumetricMeshLoader.cpp
     volumetricMeshMooneyRivlinMaterial.cpp
     volumetricMeshOrthotropicMaterial.cpp

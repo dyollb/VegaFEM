@@ -1,13 +1,11 @@
-set(SRCS 
-    cubicMeshIntegrals.cpp
+set(SRCS
     StVKCubeABCD.cpp
     StVKElementABCD.cpp
     StVKElementABCDLoader.cpp
+    StVKFEM.cpp
     StVKHessianTensor.cpp
     StVKInternalForces.cpp
-    StVKInternalForcesMT.cpp
     StVKStiffnessMatrix.cpp
-    StVKStiffnessMatrixMT.cpp
     StVKTetABCD.cpp
     StVKTetHighMemoryABCD.cpp)
 

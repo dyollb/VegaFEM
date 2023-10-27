@@ -43,6 +43,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#ifdef WIN32
+  #include <windows.h>
+#endif
+
 #include "camera.h"
 #include "openGL-headers.h"
 #include "macros.h"
@@ -55,9 +59,6 @@ SphericalCamera::SphericalCamera(double R, double Phi, double Theta, double * fo
   up[0] = up_[0]; 
   up[1] = up_[1]; 
   up[2] = up_[2];
-  origin[0] = 0.0; 
-  origin[1] = 0.0; 
-  origin[2] = 0.0;
   Reset();
 }
 
@@ -120,11 +121,18 @@ void SphericalCamera::Reset() // resets position to defaults
   ComputeLocalCoordinateSystem();
 }
 
-void SphericalCamera::SetFocusPosition(double focusPosition_[3])
+void SphericalCamera::SetFocusPosition(const double focusPosition_[3])
 { 
   focusPosition[0] = focusPosition_[0];
   focusPosition[1] = focusPosition_[1];
   focusPosition[2] = focusPosition_[2];
+  ComputeCameraPosition();
+  ComputeLocalCoordinateSystem();
+}
+
+void SphericalCamera::SetRadius(double r)
+{
+  R = r;
   ComputeCameraPosition();
   ComputeLocalCoordinateSystem();
 }
@@ -140,9 +148,22 @@ void SphericalCamera::SetPosition(double r, double phi, double theta)
 
 void SphericalCamera::Look()
 {
-  gluLookAt( cameraPosition[0], cameraPosition[1], cameraPosition[2], 
-    focusPosition[0], focusPosition[1], focusPosition[2], 
-    up[0], up[1], up[2]);
+  if (R >= 0)
+  {
+    gluLookAt( cameraPosition[0], cameraPosition[1], cameraPosition[2], 
+      focusPosition[0], focusPosition[1], focusPosition[2], 
+      up[0], up[1], up[2]);
+  }
+  else
+  {
+    double newFocus[3];
+    for(int i = 0; i < 3; i++)
+    {
+      newFocus[i] = 2 * cameraPosition[i] - focusPosition[i];
+    }
+    gluLookAt( cameraPosition[0], cameraPosition[1], cameraPosition[2], 
+      newFocus[0], newFocus[1], newFocus[2], up[0], up[1], up[2]);
+  }
 }
 
 void SphericalCamera::ComputeCameraPosition()
@@ -182,55 +203,30 @@ void SphericalCamera::GetStereoPosition(double earSeparation,
 
 void SphericalCamera::ComputeLocalCoordinateSystem()
 {
-  xAxis[0] = -R*sin(Phi)*cos(Theta);
+  // cameraPosition = focusPosition + 
+  //  [ R * cos(Phi) * cos (Theta), R * sin(Theta), -R * sin(Phi) * cos (Theta) ]
+  xAxis[0] = -sin(Phi);
   xAxis[1] = 0;
-  xAxis[2] = -R*cos(Phi)*cos(Theta);
+  xAxis[2] = -cos(Phi);
 
-  yAxis[0] = -R*cos(Phi)*sin(Theta);
-  yAxis[1] = R*cos(Theta);
-  yAxis[2] = R*sin(Phi)*sin(Theta);
+  yAxis[0] = -cos(Phi)*sin(Theta);
+  yAxis[1] = cos(Theta);
+  yAxis[2] = sin(Phi)*sin(Theta);
 
-  zAxis[0] = cameraPosition[0] - focusPosition[0];
-  zAxis[1] = cameraPosition[1] - focusPosition[1];
-  zAxis[2] = cameraPosition[2] - focusPosition[2];
+  zAxis[0] = cos(Phi) * cos (Theta);
+  zAxis[1] = sin(Theta);
+  zAxis[2] = - sin(Phi) * cos (Theta);
 
-  double length;
-
-  length = sqrt(xAxis[0] * xAxis[0] + xAxis[1] * xAxis[1] + xAxis[2] * xAxis[2]);
-  xAxis[0] /= length;
-  xAxis[1] /= length;
-  xAxis[2] /= length;
-
-  length = sqrt(yAxis[0] * yAxis[0] + yAxis[1] * yAxis[1] + yAxis[2] * yAxis[2]);
-  yAxis[0] /= length;
-  yAxis[1] /= length;
-  yAxis[2] /= length;
-
-  length = sqrt(zAxis[0] * zAxis[0] + zAxis[1] * zAxis[1] + zAxis[2] * zAxis[2]);
-  zAxis[0] /= length;
-  zAxis[1] /= length;
-  zAxis[2] /= length;
-
-  xAxis2D[0] = -R*sin(Phi);
-  xAxis2D[1] = -R*cos(Phi);
+  xAxis2D[0] = xAxis[0];
+  xAxis2D[1] = xAxis[2];
   xAxis2D[2] = 0;
 
-  yAxis2D[0] = R*cos(Phi);
-  yAxis2D[1] = -R*sin(Phi);
+  yAxis2D[0] = cos(Phi);
+  yAxis2D[1] = -sin(Phi);
   yAxis2D[2] = 0;
-
-  length = sqrt(xAxis2D[0] * xAxis2D[0] + xAxis2D[1] * xAxis2D[1] + xAxis2D[2] * xAxis2D[2]);
-  xAxis2D[0] /= length;
-  xAxis2D[1] /= length;
-  xAxis2D[2] /= length;
-
-  length = sqrt(yAxis2D[0] * yAxis2D[0] + yAxis2D[1] * yAxis2D[1] + yAxis2D[2] * yAxis2D[2]);
-  yAxis2D[0] /= length;
-  yAxis2D[1] /= length;
-  yAxis2D[2] /= length;
 }
 
-void SphericalCamera::Get2DAxes(double xAxis2D[2], double yAxis2D[2])
+void SphericalCamera::Get2DAxes(double xAxis2D[2], double yAxis2D[2]) const
 {
   xAxis2D[0] = this->xAxis2D[0];
   xAxis2D[1] = this->xAxis2D[1];
@@ -239,85 +235,73 @@ void SphericalCamera::Get2DAxes(double xAxis2D[2], double yAxis2D[2])
   yAxis2D[1] = this->yAxis2D[1];
 }
 
-void SphericalCamera::Get3DAxes(double xAxis3D[3], double yAxis3D[3], double zAxis3D[3])
+void SphericalCamera::Get3DAxes(double xAxis3D[3], double yAxis3D[3], double zAxis3D[3]) const
 {
-  ComputeLocalCoordinateSystem();
   memcpy(xAxis3D, this->xAxis, sizeof(double) * 3);
   memcpy(yAxis3D, this->yAxis, sizeof(double) * 3);
   memcpy(zAxis3D, this->zAxis, sizeof(double) * 3);
 }
 
-void SphericalCamera::CameraRotation2WorldRotation2D(double * c, double * w)
-{
-  // c is in row-major format
-  // 0  1  2
-  // 3  4  5
-  // 6  7  8 
-
-  // w = cameraMatrix * c
-  w[0] = c[0] * xAxis2D[0] + c[6] * yAxis2D[0];
-  w[3] = c[3];
-  w[6] = c[0] * xAxis2D[1] + c[6] * yAxis2D[1];
-
-  w[1] = c[1] * xAxis2D[0] + c[7] * yAxis2D[0];
-  w[4] = c[4];
-  w[7] = c[1] * xAxis2D[1] + c[7] * yAxis2D[1];
-
-  w[2] = c[2] * xAxis2D[0] + c[8] * yAxis2D[0];
-  w[5] = c[5];
-  w[8] = c[2] * xAxis2D[1] + c[8] * yAxis2D[1];
-}
-
-void SphericalCamera::CameraRotation2WorldRotation2D(float * c, float * w)
-{
-  // c is in row-major format
-  // 0  1  2
-  // 3  4  5
-  // 6  7  8 
-
-  // w = cameraMatrix * c
-  w[0] = c[0] * xAxis2D[0] + c[6] * yAxis2D[0];
-  w[3] = c[3];
-  w[6] = c[0] * xAxis2D[1] + c[6] * yAxis2D[1];
-
-  w[1] = c[1] * xAxis2D[0] + c[7] * yAxis2D[0];
-  w[4] = c[4];
-  w[7] = c[1] * xAxis2D[1] + c[7] * yAxis2D[1];
-
-  w[2] = c[2] * xAxis2D[0] + c[8] * yAxis2D[0];
-  w[5] = c[5];
-  w[8] = c[2] * xAxis2D[1] + c[8] * yAxis2D[1];
-}
-
-void SphericalCamera::CameraVector2WorldVector2D(double * c, double * w)
+void SphericalCamera::CameraVector2WorldVector2D(const double c[3], double w[3]) const
 { 
-  w[0] = origin[0] + ( c[0] * xAxis2D[0] + c[2] * yAxis2D[0] ) * camera2WorldScalingFactor;
-  w[1] = origin[1] + c[1] * camera2WorldScalingFactor;
-  w[2] = origin[2] + ( c[0] * xAxis2D[1] + c[2] * yAxis2D[1] ) * camera2WorldScalingFactor;
+  CameraVector2WorldVector2D(c[0], c[1], c[2], w);
 }
 
-void SphericalCamera::CameraVector2WorldVector2D(double c0, double c1, double c2, double * w)
+void SphericalCamera::CameraVector2WorldVector2D(double c0, double c1, double c2, double w[3]) const
 { 
-  w[0] = origin[0] + ( c0 * xAxis2D[0] + c2 * yAxis2D[0] ) * camera2WorldScalingFactor;
-  w[1] = origin[1] + c1 * camera2WorldScalingFactor;
-  w[2] = origin[2] + ( c0 * xAxis2D[1] + c2 * yAxis2D[1] ) * camera2WorldScalingFactor;
+  w[0] = cameraPosition[0] + ( c0 * xAxis2D[0] + c2 * yAxis2D[0] ) * camera2WorldScalingFactor;
+  w[1] = cameraPosition[1] + c1 * camera2WorldScalingFactor;
+  w[2] = cameraPosition[2] + ( c0 * xAxis2D[1] + c2 * yAxis2D[1] ) * camera2WorldScalingFactor;
 }
 
-void SphericalCamera::CameraVector2WorldVector_OrientationOnly2D(double * c, double * w)
+void SphericalCamera::WorldVector2CameraVector2D(const float w[3], float c[3]) const
+{
+  c[0] = ((yAxis2D[1] * (w[0] - cameraPosition[0]) - yAxis2D[0] * (w[2] - cameraPosition[2]))/camera2WorldScalingFactor)/(xAxis2D[0] * yAxis2D[1] - xAxis2D[1] * yAxis2D[0]);
+  c[1] = (w[1] - cameraPosition[1])/camera2WorldScalingFactor;
+  c[2] = ((xAxis2D[1] * (w[0] - cameraPosition[0]) - xAxis2D[0] * (w[2] - cameraPosition[2]))/camera2WorldScalingFactor)/(yAxis2D[0] * xAxis2D[1] - yAxis2D[1] * xAxis2D[0]);
+}
+
+void SphericalCamera::WorldVector2CameraVector2D(const double w[3], double c[3]) const
+{
+  c[0] = ((yAxis2D[1] * (w[0] - cameraPosition[0]) - yAxis2D[0] * (w[2] - cameraPosition[2]))/camera2WorldScalingFactor)/(xAxis2D[0] * yAxis2D[1] - xAxis2D[1] * yAxis2D[0]);
+  c[1] = (w[1] - cameraPosition[1])/camera2WorldScalingFactor;
+  c[2] = ((xAxis2D[1] * (w[0] - cameraPosition[0]) - xAxis2D[0] * (w[2] - cameraPosition[2]))/camera2WorldScalingFactor)/(yAxis2D[0] * xAxis2D[1] - yAxis2D[1] * xAxis2D[0]);
+}
+
+void SphericalCamera::CameraVector2WorldVector_OrientationOnly2D(const double c[3], double w[3]) const
+{ 
+  CameraVector2WorldVector_OrientationOnly2D(c[0], c[1], c[2], w);
+}
+
+void SphericalCamera::CameraVector2WorldVector_OrientationOnly2D(const float c[3], float w[3]) const
 { 
   w[0] = ( c[0] * xAxis2D[0] + c[2] * yAxis2D[0] ) * camera2WorldScalingFactor;
   w[1] = c[1] * camera2WorldScalingFactor;
   w[2] = ( c[0] * xAxis2D[1] + c[2] * yAxis2D[1] ) * camera2WorldScalingFactor;
 }
 
-void SphericalCamera::CameraVector2WorldVector_OrientationOnly2D(double c0, double c1, double c2, double * w)
+void SphericalCamera::CameraVector2WorldVector_OrientationOnly2D(double c0, double c1, double c2, double w[3]) const
 { 
   w[0] = ( c0 * xAxis2D[0] + c2 * yAxis2D[0] ) * camera2WorldScalingFactor;
   w[1] = c1 * camera2WorldScalingFactor;
   w[2] = ( c0 * xAxis2D[1] + c2 * yAxis2D[1] ) * camera2WorldScalingFactor;
 }
 
-void SphericalCamera::CameraVector2WorldVector_OrientationOnly3D(double c0, double c1, double c2, double * w)
+void SphericalCamera::CameraVector2WorldVector_NoScaling_OrientationOnly2D(const double c[3], double w[3]) const
+{ 
+  w[0] = ( c[0] * xAxis2D[0] + c[2] * yAxis2D[0] ); 
+  w[1] = c[1];
+  w[2] = ( c[0] * xAxis2D[1] + c[2] * yAxis2D[1] );
+}
+
+void SphericalCamera::CameraVector2WorldVector_NoScaling_OrientationOnly2D(const float c[3], float w[3]) const
+{ 
+  w[0] = ( c[0] * xAxis2D[0] + c[2] * yAxis2D[0] );
+  w[1] = c[1];
+  w[2] = ( c[0] * xAxis2D[1] + c[2] * yAxis2D[1] );
+}
+
+void SphericalCamera::CameraVector2WorldVector_OrientationOnly3D(double c0, double c1, double c2, double w[3]) const
 { 
   // cameraPosition = focusPosition + 
   //   (R * cos(Phi) * cos (Theta), R * sin(Theta), -R * sin(Phi) * cos (Theta));
@@ -349,6 +333,92 @@ void SphericalCamera::WorldVector2CameraVector_OrientationOnly2D(double w0, doub
   c[0] = w0 * xAxis2D[0] + w2 * xAxis2D[1];
   c[1] = w1;
   c[2] = w0 * yAxis2D[0] + w2 * yAxis2D[1];
+}
+
+void SphericalCamera::WorldVector2CameraVector_Scaling_OrientationOnly2D(float * w, float * c)
+{
+  c[0] = (w[0] * xAxis2D[0] + w[2] * xAxis2D[1]) / camera2WorldScalingFactor;
+  c[1] = w[1] / camera2WorldScalingFactor;
+  c[2] = (w[0] * yAxis2D[0] + w[2] * yAxis2D[1]) / camera2WorldScalingFactor;
+}
+
+void SphericalCamera::WorldVector2CameraVector_Scaling_OrientationOnly2D(double * w, double * c)
+{
+  c[0] = (w[0] * xAxis2D[0] + w[2] * xAxis2D[1]) / camera2WorldScalingFactor;
+  c[1] = w[1] / camera2WorldScalingFactor;
+  c[2] = (w[0] * yAxis2D[0] + w[2] * yAxis2D[1]) / camera2WorldScalingFactor;
+}
+
+void SphericalCamera::CameraRotation2WorldRotation2D(const double c[9], double w[9]) const
+{
+  // c is in row-major format
+  // 0  1  2
+  // 3  4  5
+  // 6  7  8 
+
+  // w = cameraMatrix * c
+  w[0] = c[0] * xAxis2D[0] + c[6] * yAxis2D[0];
+  w[3] = c[3];
+  w[6] = c[0] * xAxis2D[1] + c[6] * yAxis2D[1];
+
+  w[1] = c[1] * xAxis2D[0] + c[7] * yAxis2D[0];
+  w[4] = c[4];
+  w[7] = c[1] * xAxis2D[1] + c[7] * yAxis2D[1];
+
+  w[2] = c[2] * xAxis2D[0] + c[8] * yAxis2D[0];
+  w[5] = c[5];
+  w[8] = c[2] * xAxis2D[1] + c[8] * yAxis2D[1];
+}
+
+void SphericalCamera::CameraRotation2WorldRotation2D(const float c[9], float w[9]) const
+{
+  // c is in row-major format
+  // 0  1  2
+  // 3  4  5
+  // 6  7  8 
+
+  // w = cameraMatrix * c
+  w[0] = c[0] * xAxis2D[0] + c[6] * yAxis2D[0];
+  w[3] = c[3];
+  w[6] = c[0] * xAxis2D[1] + c[6] * yAxis2D[1];
+
+  w[1] = c[1] * xAxis2D[0] + c[7] * yAxis2D[0];
+  w[4] = c[4];
+  w[7] = c[1] * xAxis2D[1] + c[7] * yAxis2D[1];
+
+  w[2] = c[2] * xAxis2D[0] + c[8] * yAxis2D[0];
+  w[5] = c[5];
+  w[8] = c[2] * xAxis2D[1] + c[8] * yAxis2D[1];
+}
+
+void SphericalCamera::WorldRotation2CameraRotation2D(const double w[9], double c[9]) const
+{
+  c[0] = w[0] * xAxis2D[0] + w[6] * xAxis2D[1];
+  c[3] = w[3];
+  c[6] = w[0] * yAxis2D[0] + w[6] * yAxis2D[1];
+
+  c[1] = w[1] * xAxis2D[0] + w[7] * xAxis2D[1];
+  c[4] = w[4];
+  c[7] = w[1] * yAxis2D[0] + w[7] * yAxis2D[1];
+
+  c[2] = w[2] * xAxis2D[0] + w[8] * xAxis2D[1];
+  c[5] = w[5];
+  c[8] = w[2] * yAxis2D[0] + w[8] * yAxis2D[1];
+}
+
+void SphericalCamera::WorldRotation2CameraRotation2D(const float w[9], float c[9]) const
+{
+  c[0] = w[0] * xAxis2D[0] + w[6] * xAxis2D[1];
+  c[3] = w[3];
+  c[6] = w[0] * yAxis2D[0] + w[6] * yAxis2D[1];
+
+  c[1] = w[1] * xAxis2D[0] + w[7] * xAxis2D[1];
+  c[4] = w[4];
+  c[7] = w[1] * yAxis2D[0] + w[7] * yAxis2D[1];
+
+  c[2] = w[2] * xAxis2D[0] + w[8] * xAxis2D[1];
+  c[5] = w[5];
+  c[8] = w[2] * yAxis2D[0] + w[8] * yAxis2D[1];
 }
 
 void SphericalCamera::SavePosition(const char * filename)
@@ -443,9 +513,9 @@ void SphericalCamera::CameraTransform2WorldTransform2D(double * c, double * w)
   w[10] = c[2] * xAxis2D[1] + c[10] * yAxis2D[1];
   w[14] = 0;
 
-  w[3] = origin[0] + ( c[3] * xAxis2D[0] + c[11] * yAxis2D[0] ) * camera2WorldScalingFactor;
-  w[7] = origin[1] + c[7] * camera2WorldScalingFactor;
-  w[11] = origin[2] + ( c[3] * xAxis2D[1] + c[11] * yAxis2D[1] ) * camera2WorldScalingFactor;
+  w[3] = cameraPosition[0] + ( c[3] * xAxis2D[0] + c[11] * yAxis2D[0] ) * camera2WorldScalingFactor;
+  w[7] = cameraPosition[1] + c[7] * camera2WorldScalingFactor;
+  w[11] = cameraPosition[2] + ( c[3] * xAxis2D[1] + c[11] * yAxis2D[1] ) * camera2WorldScalingFactor;
   w[15] = 1;
 }
 
@@ -475,9 +545,9 @@ void SphericalCamera::CameraTransform2WorldTransform2D(float * c, float * w)
   w[10] = c[2] * xAxis2D[1] + c[10] * yAxis2D[1];
   w[14] = 0;
 
-  w[3] = origin[0] + ( c[3] * xAxis2D[0] + c[11] * yAxis2D[0] ) * camera2WorldScalingFactor;
-  w[7] = origin[1] + c[7] * camera2WorldScalingFactor;
-  w[11] = origin[2] + ( c[3] * xAxis2D[1] + c[11] * yAxis2D[1] ) * camera2WorldScalingFactor;
+  w[3] = cameraPosition[0] + ( c[3] * xAxis2D[0] + c[11] * yAxis2D[0] ) * camera2WorldScalingFactor;
+  w[7] = cameraPosition[1] + c[7] * camera2WorldScalingFactor;
+  w[11] = cameraPosition[2] + ( c[3] * xAxis2D[1] + c[11] * yAxis2D[1] ) * camera2WorldScalingFactor;
   w[15] = 1;
 }
 
@@ -507,9 +577,9 @@ void SphericalCamera::CameraTransform2WorldTransform2D_ColumnMajor(float * c, fl
   w[10] = c[8] * xAxis2D[1] + c[10] * yAxis2D[1];
   w[11] = 0;
 
-  w[12] = origin[0] + ( c[12] * xAxis2D[0] + c[14] * yAxis2D[0] ) * camera2WorldScalingFactor;
-  w[13] = origin[1] + c[13] * camera2WorldScalingFactor;
-  w[14] = origin[2] + ( c[12] * xAxis2D[1] + c[14] * yAxis2D[1] ) * camera2WorldScalingFactor;
+  w[12] = cameraPosition[0] + ( c[12] * xAxis2D[0] + c[14] * yAxis2D[0] ) * camera2WorldScalingFactor;
+  w[13] = cameraPosition[1] + c[13] * camera2WorldScalingFactor;
+  w[14] = cameraPosition[2] + ( c[12] * xAxis2D[1] + c[14] * yAxis2D[1] ) * camera2WorldScalingFactor;
   w[15] = 1;
 }
 
@@ -540,17 +610,22 @@ void SphericalCamera::CameraTransform2WorldTransform2D_NoScaling_ColumnMajor(flo
   w[10] = c[8] * xAxis2D[1] + c[10] * yAxis2D[1];
   w[11] = 0;
 
-  w[12] = origin[0] + ( c[12] * xAxis2D[0] + c[14] * yAxis2D[0] );
-  w[13] = origin[1] + c[13];
-  w[14] = origin[2] + ( c[12] * xAxis2D[1] + c[14] * yAxis2D[1] );
+  w[12] = cameraPosition[0] + ( c[12] * xAxis2D[0] + c[14] * yAxis2D[0] );
+  w[13] = cameraPosition[1] + c[13];
+  w[14] = cameraPosition[2] + ( c[12] * xAxis2D[1] + c[14] * yAxis2D[1] );
   w[15] = 1;
 }
 
-void SphericalCamera::GetFocusPosition(double focusPosition_[3])
+void SphericalCamera::GetFocusPosition(double focusPosition_[3]) const
 { 
   focusPosition_[0] = focusPosition[0];
   focusPosition_[1] = focusPosition[1];
   focusPosition_[2] = focusPosition[2];
+}
+
+void SphericalCamera::GetCameraPosition(double cameraPosition_[3]) const
+{ 
+  memcpy(cameraPosition_, cameraPosition, sizeof(double) * 3);
 }
 
 void SphericalCamera::MoveFocusRight(double amount)

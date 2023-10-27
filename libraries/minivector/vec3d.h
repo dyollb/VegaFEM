@@ -29,15 +29,6 @@
 
   A simple class for vector algebra on 3D vectors 
   (summation, normalization, dot product, cross product, etc.).
-
-  Note: this code was inspired by Andrew Willmott's VL and SVL Libraries:
-    http://www.cs.cmu.edu/afs/cs/user/ajw/www/software/index.html#VL
-    (these two libraries contain a lot of useful functionality and
-     are highly recommended)
-  My library offers just the basic vector functionality, hence "minivector".
-  It was written from scratch for a course project at CMU.
-
-  Version 1.2
 */
 
 #ifndef _MINIVEC3D_H_
@@ -46,14 +37,15 @@
 #include <stdio.h>
 #include <math.h>
 #include <ostream>
+#include <cstring>
 
-class Vec3d {
-
+class Vec3d
+{
 public:
   inline Vec3d() {}
   inline Vec3d(double x, double y, double z) {elt[0]=x; elt[1]=y; elt[2]=z;}
-  inline Vec3d(double entry); // create a vector with all entries "entry" (can create zero vector for entry=0.0)
-  inline Vec3d(const double * vec); // create a vector from the array of three doubles pointed to by "vec"
+  inline explicit Vec3d(double entry); // create a vector with all entries "entry" (can create zero vector for entry=0.0)
+  inline Vec3d(const double vec[3]); // create a vector from the array of three doubles pointed to by "vec"
   inline Vec3d(const Vec3d & vec);
 
   inline void set(double x0, double x1, double x2); // assign vector [x0, x1, x2]
@@ -61,6 +53,7 @@ public:
 
   inline Vec3d & operator=(const Vec3d & source);
   inline bool operator==(const Vec3d & vec2) const;
+  inline bool operator!=(const Vec3d & vec2) const;
 
   inline const Vec3d operator+ (const Vec3d & vec2) const;
   inline Vec3d & operator+= (const Vec3d & vec2);
@@ -74,8 +67,11 @@ public:
   inline Vec3d operator/ (double scalar) const;
   inline Vec3d & operator/= (double scalar);
 
+  // operator for Vec3d to be used as a key in std::set, std::map, etc.
+  inline bool operator < (const Vec3d & vec2) const;
+
   friend inline Vec3d operator* (double scalar, const Vec3d & vec2);
-  friend inline Vec3d operator/ (double scalar, const Vec3d & vec2);
+  friend inline Vec3d operator- (const Vec3d & vec1);
 
   friend inline double dot(const Vec3d & vec1, const Vec3d & vec2); // dot product
 
@@ -85,18 +81,30 @@ public:
   inline void normalize(); // normalize itself without returning anything
 
   friend inline std::ostream &operator << (std::ostream &s, const Vec3d &v);
-  void print();
+  void print() const;
 
   friend class Mat3d;
 
-  inline double & operator[] (int index); // v[i] returns i-th entry of v
-  inline const double & operator[] (int index) const;
+  inline double & operator[] (int i) { return elt[i]; } // v[i] returns i-th entry of v
+  inline const double & operator[] (int i) const { return elt[i]; }
+
+  // allow implicit conversion from Vec3d to const double *
+  operator const double * () const { return &elt[0]; }
+
+  const double * data() const { return &elt[0]; }
+  double * data() { return &elt[0]; }
 
   // finds a unit vector orthogonal to this vector
-  Vec3d findOrthonormalVector();
+  Vec3d findOrthonormalVector() const;
 
   // copies the vector into an array of length 3
-  inline void convertToArray(double * vecArray);
+  inline void convertToArray(double vecArray[3]) const;
+  // adds the vector into an array of length 3
+  inline void addToArray(double vecArray[3]) const;
+
+  inline bool hasNaN() const;
+
+  inline static bool isNaN(double x);
   
 protected:
   double elt[3];
@@ -106,31 +114,22 @@ protected:
 
 inline Vec3d::Vec3d(double entry)
 {
-  elt[0] = entry;
-  elt[1] = entry;
-  elt[2] = entry;
+  set(entry);
 }
 
-inline Vec3d::Vec3d(const double * vec)
+inline Vec3d::Vec3d(const double vec[3])
 {
-  elt[0] = vec[0];
-  elt[1] = vec[1];
-  elt[2] = vec[2];
+  memcpy(elt, vec, sizeof(double) * 3);
 }
 
 inline Vec3d::Vec3d(const Vec3d & vec)
 {
-  elt[0] = vec.elt[0];
-  elt[1] = vec.elt[1];
-  elt[2] = vec.elt[2];
+  memcpy(elt, vec.elt, sizeof(double) * 3);
 }
 
 inline Vec3d & Vec3d::operator=(const Vec3d & source)
 {
-  elt[0] = source.elt[0];
-  elt[1] = source.elt[1];
-  elt[2] = source.elt[2];
-
+  memcpy(elt, source.elt, sizeof(double) * 3);
   return *this;
 }
 
@@ -139,6 +138,26 @@ inline bool Vec3d::operator==(const Vec3d & vec2) const
   return ((elt[0] == vec2[0]) &&
           (elt[1] == vec2[1]) &&
           (elt[2] == vec2[2]));
+}
+
+inline bool Vec3d::operator!=(const Vec3d & vec2) const
+{
+  return ((elt[0] != vec2[0]) ||
+          (elt[1] != vec2[1]) ||
+          (elt[2] != vec2[2]));
+}
+
+inline bool Vec3d::operator<(const Vec3d & vec2) const
+{
+  if(elt[0] < vec2[0]) 
+    return true;
+  if(elt[0] > vec2[0]) 
+    return false;
+  if(elt[1] < vec2[1]) 
+    return true;
+  if(elt[1] > vec2[1]) 
+    return false;
+  return elt[2] < vec2[2];
 }
 
 inline Vec3d operator* (double scalar, const Vec3d & vec2)
@@ -151,14 +170,9 @@ inline Vec3d operator* (double scalar, const Vec3d & vec2)
   return result;
 }
 
-inline Vec3d operator/ (double scalar, const Vec3d & vec2)
+inline Vec3d operator- (const Vec3d & vec1)
 {
-  Vec3d result = vec2;
-  result.elt[0] /= scalar;
-  result.elt[1] /= scalar;
-  result.elt[2] /= scalar;
-
-  return result;
+  return vec1 * (-1);
 }
 
 inline const Vec3d Vec3d::operator+ (const Vec3d & vec2) const
@@ -199,16 +213,6 @@ inline Vec3d & Vec3d::operator-= (const Vec3d & vec2)
   return *this;
 }
 
-inline double & Vec3d::operator[] (int index)
-{
-  return elt[index];
-}
-
-inline const double & Vec3d::operator[] (int index) const
-{
-  return elt[index];
-}
-
 inline double dot(const Vec3d & vec1, const Vec3d & vec2)
 {
   return (vec1.elt[0] * vec2.elt[0] + vec1.elt[1] * vec2.elt[1] + vec1.elt[2] * vec2.elt[2]);
@@ -223,38 +227,25 @@ inline Vec3d cross(const Vec3d & vec1, const Vec3d & vec2)
   return result;
 }
 
-inline Vec3d norm(const Vec3d & vec1)
-{
-  double norm2 = dot(vec1,vec1);
-  Vec3d result = vec1;
-  result *= 1.0 / sqrt(norm2);
-  
-  return result;
-}
-
-inline Vec3d & Vec3d::operator*= (double scalar)
-{
-  elt[0] *= scalar;
-  elt[1] *= scalar;
-  elt[2] *= scalar;
-  return *this;
-}
-
 inline const Vec3d Vec3d::operator* (double scalar) const
 {
-  return (Vec3d(elt[0]*scalar,elt[1]*scalar,elt[2]*scalar));
+  return (Vec3d(elt[0] * scalar, elt[1] * scalar, elt[2] * scalar));
 }
 
 inline Vec3d Vec3d::operator/ (double scalar) const
 {
-  return (Vec3d(elt[0]/scalar,elt[1]/scalar,elt[2]/scalar));
+  return (Vec3d(elt[0] / scalar, elt[1] / scalar, elt[2] / scalar));
+}
+
+inline Vec3d & Vec3d::operator*= (double scalar)
+{
+  *this = (*this) * scalar;
+  return *this;
 }
 
 inline Vec3d & Vec3d::operator/= (double scalar)
 {
-  elt[0] /= scalar;
-  elt[1] /= scalar;
-  elt[2] /= scalar;
+  *this = (*this) / scalar;
   return *this;
 }
 
@@ -263,42 +254,50 @@ inline double len(const Vec3d & vec1)
   return(sqrt(dot(vec1,vec1)));
 }
 
+inline Vec3d norm(const Vec3d & vec1)
+{
+  // return vec1 / len(vec1); 
+
+  double norm2 = dot(vec1,vec1);
+  Vec3d result = vec1;
+  result *= 1.0 / sqrt(norm2);
+  
+  return result;
+}
+
 inline double len2(const Vec3d & vec1)
 {
   return(dot(vec1,vec1));
 }
 
-inline std::ostream &operator << (std::ostream &s, const Vec3d &v)
+inline std::ostream &operator << (std::ostream & s, const Vec3d & v)
 {
-  double a = v[0];
-  double b = v[1];
-  double c = v[2];
-  
-  return(s << '[' << a << ' ' << b << ' ' << c << ']');
+  return(s << '[' << v[0] << ' ' << v[1] << ' ' << v[2] << ']');
 }
 
-inline void Vec3d::convertToArray(double * vecArray)
+inline void Vec3d::convertToArray(double vecArray[3]) const
 {
   vecArray[0] = elt[0];
   vecArray[1] = elt[1];
   vecArray[2] = elt[2];
 }
 
-inline void Vec3d::normalize()
+inline void Vec3d::addToArray(double vecArray[3]) const
 {
-  double invMag = 1.0 / sqrt(elt[0]*elt[0] + elt[1]*elt[1] + elt[2]*elt[2]);
-  elt[0] *= invMag;
-  elt[1] *= invMag;
-  elt[2] *= invMag;
+  vecArray[0] += elt[0];
+  vecArray[1] += elt[1];
+  vecArray[2] += elt[2];
 }
 
-inline void Vec3d::print()
+inline void Vec3d::normalize()
 {
-  double a = elt[0];
-  double b = elt[1];
-  double c = elt[2];
-  
-  printf("[%G %G %G]\n", a, b, c);
+  double invMag = 1.0 / len(*this);
+  (*this) *= invMag;
+}
+
+inline void Vec3d::print() const
+{
+  printf("[%G %G %G]\n", elt[0], elt[1], elt[2]);
 }
 
 inline void Vec3d::set(double x0, double x1, double x2) // assign vector [x0, x1, x2]
@@ -310,9 +309,23 @@ inline void Vec3d::set(double x0, double x1, double x2) // assign vector [x0, x1
 
 inline void Vec3d::set(double value) // set all elements to value
 {
-  elt[0] = value;
-  elt[1] = value;
-  elt[2] = value;
+  elt[0] = elt[1] = elt[2] = value;
+}
+
+inline bool Vec3d::hasNaN() const
+{
+  return (isNaN(elt[0]) || isNaN(elt[1]) || isNaN(elt[2]));
+}
+
+inline bool Vec3d::isNaN(double x) 
+{ 
+  #ifdef isnan
+    return (isnan(x) != 0);
+  #elif defined(_WIN32)
+    return (_isnan(x) != 0);
+  #else
+    return (x != x); 
+  #endif
 }
 
 #endif
