@@ -169,10 +169,10 @@ int MatrixPCA(ThresholdingSpecification * thresholdingSpecification,
 #if defined(VEGA_USE_ACCELERATE)
     #define DGESVD dgesvd_
     #define INTEGER __CLPK_integer
-  #else
+#else
     #define DGESVD dgesvd
     #define INTEGER int
-  #endif
+#endif
 
   INTEGER M = m;
   INTEGER N = n;
@@ -246,4 +246,3 @@ int MatrixPCA(ThresholdingSpecification * thresholdingSpecification,
 
   return 0;
 }
-

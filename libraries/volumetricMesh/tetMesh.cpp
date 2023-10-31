@@ -34,6 +34,8 @@
 #include "volumetricMeshParser.h"
 #include "geometryQuery.h"
 
+using namespace std;
+
 const VolumetricMesh::elementType TetMesh::elementType_ = TET;
 
 TetMesh::TetMesh(const char * filename, fileFormatType fileFormat, int verbose) : VolumetricMesh(filename, fileFormat, 4, &temp, verbose)
@@ -73,7 +75,7 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
   sprintf(lineBuffer, "%s.node", filename);
   if (parser.open(lineBuffer) != 0)
     throw 2;
-  
+
   parser.getNextLine(lineBuffer, 1);
   int dim;
   sscanf(lineBuffer, "%d %d", &numVertices, &dim);
@@ -92,7 +94,7 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
       throw 3;
     vertices[i] = Vec3d(x,y,z);
   }
-  
+
   parser.close();
 
   // next, read the elements
@@ -123,10 +125,10 @@ TetMesh::TetMesh(const char * filename, int specialFileType, int verbose): Volum
     for(int j=0; j<4; j++) // vertices are 1-indexed in .ele files
     {
       v[j]--;
-      elements[i][j] = v[j]; 
+      elements[i][j] = v[j];
     }
   }
-  
+
   parser.close();
 
   numMaterials = 0;
@@ -143,7 +145,7 @@ TetMesh::TetMesh(const Vec3d & p0, const Vec3d & p1, const Vec3d & p2, const Vec
   double E = 1E8;
   double nu = 0.45;
   double density = 1000;
-  
+
   numVertices = 4;
   vertices = (Vec3d*) malloc (sizeof(Vec3d) * numVertices);
 
@@ -159,7 +161,7 @@ TetMesh::TetMesh(const Vec3d & p0, const Vec3d & p1, const Vec3d & p2, const Vec
   elements[0] = (int*) malloc (sizeof(int) * 4);
   for(int i = 0; i < 4; i++)
     elements[0][i] = i;
-  
+
   numMaterials = 0;
   numSets = 0;
   numRegions = 0;
@@ -175,7 +177,7 @@ TetMesh::TetMesh(int numVertices_, double * vertices_, int numElements_, int * e
     : VolumetricMesh(numVertices_, vertices_, numElements_, 4, elements_, E, nu, density) {}
 
 TetMesh::TetMesh(int numVertices_, double * vertices_, int numElements_, int * elements_,
-         int numMaterials_, Material ** materials_, int numSets_, Set ** sets_, int numRegions_, Region ** regions_): 
+         int numMaterials_, Material ** materials_, int numSets_, Set ** sets_, int numRegions_, Region ** regions_):
   VolumetricMesh(numVertices_, vertices_, numElements_, 4, elements_,
                  numMaterials_, materials_, numSets_, sets_, numRegions_, regions_) {}
 
@@ -234,7 +236,7 @@ void TetMesh::computeElementMassMatrix(int el, double * massMatrix) const
    Singiresu S. Rao: The finite element method in engineering, 2004)
 */
 
-  const double mtx[16] = { 2, 1, 1, 1, 
+  const double mtx[16] = { 2, 1, 1, 1,
                            1, 2, 1, 1,
                            1, 1, 2, 1,
                            1, 1, 1, 2 } ;
@@ -260,7 +262,7 @@ double TetMesh::getSignedTetVolume(const Vec3d & a, const Vec3d & b, const Vec3d
 double TetMesh::getTetVolume(const Vec3d & a, const Vec3d & b, const Vec3d & c, const Vec3d & d)
 {
   // volume = 1/6 * | (d-a) . ((b-a) x (c-a)) |
-  return (1.0 / 6 * fabs(getTetDeterminant(a, b, c, d))); 
+  return (1.0 / 6 * fabs(getTetDeterminant(a, b, c, d)));
 }
 
 double TetMesh::getElementVolume(int el) const
@@ -320,7 +322,7 @@ void TetMesh::computeBarycentricWeights(const Vec3d tetVtxPos[4], const Vec3d & 
   return computeBarycentricWeights(tetVtxPos[0], tetVtxPos[1], tetVtxPos[2], tetVtxPos[3], pos, weights);
 }
 
-void TetMesh::computeBarycentricWeights(const Vec3d & tetVtxPos0, const Vec3d & tetVtxPos1, const Vec3d & tetVtxPos2, const Vec3d & tetVtxPos3, 
+void TetMesh::computeBarycentricWeights(const Vec3d & tetVtxPos0, const Vec3d & tetVtxPos1, const Vec3d & tetVtxPos2, const Vec3d & tetVtxPos3,
     const Vec3d & pos, double weights[4])
 {
   getTetBarycentricWeights(pos, tetVtxPos0, tetVtxPos1, tetVtxPos2, tetVtxPos3, weights);
@@ -418,7 +420,7 @@ void TetMesh::getElementEdges(int el, int * edgeBuffer) const
     v[i] = getVertexIndex(el,i);
 
   int edgeMask[6][2] = {
-   { 0, 1 }, { 1, 2 }, { 2, 0 }, 
+   { 0, 1 }, { 1, 2 }, { 2, 0 },
    { 0, 3 }, { 1, 3 }, { 2, 3 } };
 
   for(int edge=0; edge<6; edge++)
@@ -447,4 +449,3 @@ void TetMesh::orient()
     }
   }
 }
-
