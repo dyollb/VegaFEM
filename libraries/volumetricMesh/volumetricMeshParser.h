@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-using namespace std;
 
 /*
   A parser for the volumetric mesh text file format.
@@ -66,7 +65,7 @@ public:
 
 protected:
   FILE * fin;
-  vector< FILE* > fileStack;
+  std::vector< FILE* > fileStack;
   //int fileStackDepth;
 
   char directoryName[4096];
@@ -76,4 +75,3 @@ protected:
 };
 
 #endif
-

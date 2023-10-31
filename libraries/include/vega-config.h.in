@@ -1,5 +1,6 @@
 #pragma once
 
+#cmakedefine VEGA_USE_TBB
 #cmakedefine VEGA_USE_INTEL_MKL
 #cmakedefine VEGA_USE_PARDISO
 #cmakedefine VEGA_USE_SPOOLES
