@@ -10,3 +10,11 @@
 #if defined(__APPLE__) && !defined(VEGA_USE_INTEL_MKL)
     #define VEGA_USE_ACCELERATE
 #endif
+
+#ifdef VEGA_USE_TBB
+    #define USE_TBB
+#endif
+
+#ifdef VEGA_USE_INTEL_MKL
+    #define USE_INTEL_MKL
+#endif
