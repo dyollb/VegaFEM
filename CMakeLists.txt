@@ -27,9 +27,7 @@ list(APPEND VEGA_DEPENDENCIES OpenGL::GL)
 
 if(VEGA_USE_TBB)
   find_package(TBB REQUIRED)
-  get_target_property(TBB_INCLUDE_DIRS TBB::tbb INTERFACE_INCLUDE_DIRECTORIES)
-  list(APPEND VEGA_DEPENDENCIES ${TBB_IMPORTED_TARGETS})
-  include_directories(${TBB_INCLUDE_DIRS})
+  list(APPEND VEGA_DEPENDENCIES TBB::tbb)
 endif()
 
 if(VEGA_USE_GLUT)
@@ -66,14 +64,6 @@ else()
       set(VEGA_USE_INTEL_MKL ON)
     endif()
   endforeach()
-  if(VEGA_USE_INTEL_MKL)
-    get_target_property(TARGET_BLAS_INCLUDE_DIRS BLAS::BLAS
-                        INTERFACE_INCLUDE_DIRECTORIES)
-    message(STATUS "TARGET_BLAS_INCLUDE_DIRS: ${TARGET_BLAS_INCLUDE_DIRS}")
-    find_path(BLAS_INCLUDE_DIRS mkl_cblas.h
-              PATHS /usr/include /usr/local/include /usr/include/mkl REQUIRED)
-    include_directories(${BLAS_INCLUDE_DIRS})
-  endif()
   message(STATUS "Using Intel MKL: ${VEGA_USE_INTEL_MKL}")
 endif()
 
@@ -188,6 +178,9 @@ target_link_libraries(vega ${VEGA_DEPENDENCIES})
 if(BUILD_SHARED_LIBS)
   set_target_properties(vega PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
+
+# make sure config is visible
+target_precompile_headers(vega PRIVATE "${CMAKE_BINARY_DIR}/vega-config.h")
 
 # build utilities
 if(VEGA_BUILD_UTILITIES)

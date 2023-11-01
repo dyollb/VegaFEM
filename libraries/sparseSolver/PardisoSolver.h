@@ -40,14 +40,14 @@
     symmetric indefinite matrix
     unsymmetric matrix
   The solution is obtained using the Pardiso library from Intel MKL, using multi-threading.
-  Three steps are performed: 
+  Three steps are performed:
     1. matrix re-ordering and symbolic factorization (in the constructor)
     2. numerical matrix factorization (FactorMatrix)
     3. the actual linear system solve (SolveLinearSystem)
-  The solution method is direct (not iterative), unless one uses the direct-iterative mode. 
+  The solution method is direct (not iterative), unless one uses the direct-iterative mode.
   As such, convergence is robust, and there is no need to tune convergence parameters, unlike, say, in the conjugate gradient method.
   Memory requirements are minimized by re-ordering the matrix before applying the matrix decomposition.
-  However, for very large systems (e.g. matrices of size 200,000 x 200,000, on a machine with 2 GB RAM), 
+  However, for very large systems (e.g. matrices of size 200,000 x 200,000, on a machine with 2 GB RAM),
   the matrix decomposition might run out of memory.
 */
 
@@ -88,7 +88,7 @@ public:
   // You must factor the matrix at least once; and every time the entries of the matrix A change.
   // If the topology of A changes, you must call the constructor again.
   // A is not modified.
-  MKL_INT FactorMatrix(const SparseMatrix * A); 
+  MKL_INT FactorMatrix(const SparseMatrix * A);
 
   // solve: A * x = rhs, using the previously computed matrix factorization
   // rhs is not modified
@@ -117,15 +117,14 @@ protected:
   MKL_INT iparm[64];
 
   int numThreads;
-  matrixType mtype;
-  reorderingType rtype;
+  MKL_INT mtype;
+  MKL_INT rtype;
   int directIterative;
   int verbose;
-  MKL_INT nrhs; 
+  MKL_INT nrhs;
   MKL_INT maxfct, mnum, phase, error, msglvl;
 
   static void DisabledSolverError();
 };
 
 #endif
-

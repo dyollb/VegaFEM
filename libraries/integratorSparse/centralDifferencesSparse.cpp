@@ -38,6 +38,17 @@
 #include "performanceCounter.h"
 #include "constrainedDOFs.h"
 #include "centralDifferencesSparse.h"
+#include "integratorSolverSelection.h"
+
+#ifdef PARDISO
+  #include "sparseSolvers.h"
+#endif
+#ifdef SPOOLES
+  #include "sparseSolvers.h"
+#endif
+#ifdef PCG
+  #include "CGSolver.h"
+#endif
 
 CentralDifferencesSparse::CentralDifferencesSparse(int numDOFs, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs, int * constrainedDOFs, double dampingMassCoef, double dampingStiffnessCoef, int tangentialDampingMode_, int numSolverThreads_): IntegratorBaseSparse(numDOFs, timestep, massMatrix_, forceModel_, numConstrainedDOFs, constrainedDOFs, dampingMassCoef, dampingStiffnessCoef), tangentialDampingMode(tangentialDampingMode_), numSolverThreads(numSolverThreads_), timestepIndex(0)
 {
@@ -83,8 +94,7 @@ CentralDifferencesSparse::~CentralDifferencesSparse()
   #endif
 
   #ifdef SPOOLES
-    if (spoolesSolver != NULL)
-      delete(spoolesSolver);
+    delete(spoolesSolver);
   #endif
 
   #ifdef PCG
@@ -115,7 +125,7 @@ void CentralDifferencesSparse::DecomposeSystemMatrix()
   systemMatrix->AssignSuperMatrix(*tangentStiffnessMatrix);
 
   //systemMatrix->SaveToMatlabFormat("system.mat");
-  
+
   #ifdef PARDISO
     int info = pardisoSolver->FactorMatrix(systemMatrix);
     if (info != 0)
@@ -148,12 +158,12 @@ int CentralDifferencesSparse::DoTimestep()
   if (tangentialDampingMode > 0)
     if (timestepIndex % tangentialDampingMode == 0)
       DecomposeSystemMatrix(); // this routines also updates the damping and system matrices
-  
+
   // update equation is (see WRIGGERS P.: Computational Contact Mechanics. John Wiley & Sons, Ltd., 2002., page 275) :
   //
   // (M + dt / 2 * C) * q(t+1) = (dt)^2 * (fext(t) - fint(q(t))) + dt / 2 * C * q(t-1) + M * (2q(t) - q(t-1))
   //
-  // (M + dt / 2 * C) * (q(t+1) - q(t)) = (dt)^2 * (fext(t) - fint(q(t))) + dt / 2 * C * (q(t-1) - q(t)) + M * (q(t) - q(t-1)) 
+  // (M + dt / 2 * C) * (q(t+1) - q(t)) = (dt)^2 * (fext(t) - fint(q(t))) + dt / 2 * C * (q(t-1) - q(t)) + M * (q(t) - q(t-1))
 
   // fext are the external forces
   // fint is the vector of internal forces
@@ -163,7 +173,7 @@ int CentralDifferencesSparse::DoTimestep()
   for (int i=0; i<r; i++)
     buffer[i] = q[i] - q_1[i];
   massMatrix->MultiplyVector(buffer, rhs);
-  
+
   // rhs += dt / 2 * dampingMatrix * (q_{n-1} - q_n)
   for (int i=0; i<r; i++)
     qdelta[i] = q_1[i] - q[i];
@@ -171,7 +181,7 @@ int CentralDifferencesSparse::DoTimestep()
   for (int i=0; i<r; i++)
     rhs[i] += 0.5 * timestep * buffer[i];
 
-  // rhs += dt * dt * (fext - fint(q(t))) 
+  // rhs += dt * dt * (fext - fint(q(t)))
   double timestep2 = timestep * timestep;
   for (int i=0; i<r; i++)
     rhs[i] += timestep2 * (externalForces[i] - internalForces[i]);
@@ -193,7 +203,7 @@ int CentralDifferencesSparse::DoTimestep()
     int info = pardisoSolver->SolveLinearSystem(buffer, rhsConstrained);
     char solverString[16] = "PARDISO";
   #endif
-  
+
   #ifdef PCG
     int info = jacobiPreconditionedCGSolver->SolveLinearSystemWithJacobiPreconditioner(buffer, rhsConstrained, 1e-6, 10000);
     if (info > 0)
@@ -258,4 +268,3 @@ void CentralDifferencesSparse::ResetToRest()
   IntegratorBaseSparse::ResetToRest();
   timestepIndex = 0;
 }
-

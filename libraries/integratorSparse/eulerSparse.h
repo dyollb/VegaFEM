@@ -31,7 +31,8 @@
  *************************************************************************/
 
 /*
-  A class to timestep large sparse dynamics using standard Euler, or symplectic Euler.
+  A class to timestep large sparse dynamics using standard Euler, or symplectic
+  Euler.
 
   standard Euler:
   x_{n+1} = x_n + h * v_n
@@ -45,54 +46,40 @@
 #ifndef _EULERSPARSE_H_
 #define _EULERSPARSE_H_
 
-#include "integratorSolverSelection.h"
 #include "integratorBaseSparse.h"
 
-#ifdef PARDISO
-  #include "sparseSolvers.h"
-#endif
-#ifdef SPOOLES
-  #include "sparseSolvers.h"
-#endif
-#ifdef PCG
-  #include "CGSolver.h"
-#endif
+class PardisoSolver;
+class SPOOLESSolver;
+class CGSolver;
 
-
-class EulerSparse : public IntegratorBaseSparse
-{
+class EulerSparse : public IntegratorBaseSparse {
 public:
-
-  // constrainedDOFs is an integer array of degrees of freedom that are to be fixed to zero (e.g., to permanently fix a vertex in a deformable simulation)
-  // constrainedDOFs are 0-indexed (separate DOFs for x,y,z), and must be pre-sorted (ascending)
-  // dampingMatrix is optional and provides damping (in addition to mass damping)
-  EulerSparse(int r, double timestep, SparseMatrix * massMatrix, ForceModel * forceModel, int symplectic=0, int numConstrainedDOFs=0, int * constrainedDOFs=NULL, double dampingMassCoef=0.0, int numSolverThreads=1);
+  // constrainedDOFs is an integer array of degrees of freedom that are to be
+  // fixed to zero (e.g., to permanently fix a vertex in a deformable
+  // simulation) constrainedDOFs are 0-indexed (separate DOFs for x,y,z), and
+  // must be pre-sorted (ascending) dampingMatrix is optional and provides
+  // damping (in addition to mass damping)
+  EulerSparse(int r, double timestep, SparseMatrix *massMatrix,
+              ForceModel *forceModel, int symplectic = 0,
+              int numConstrainedDOFs = 0, int *constrainedDOFs = NULL,
+              double dampingMassCoef = 0.0, int numSolverThreads = 1);
 
   virtual ~EulerSparse();
 
-  // sets q, and (optionally) qvel 
-  // returns 0 
-  virtual int SetState(double * q, double * qvel=NULL);
+  // sets q, and (optionally) qvel
+  // returns 0
+  virtual int SetState(double *q, double *qvel = NULL);
 
-  virtual int DoTimestep(); 
+  virtual int DoTimestep();
 
 protected:
   int symplectic;
-  SparseMatrix * systemMatrix;
-  double * bufferConstrained;
-  
-  #ifdef PARDISO
-    PardisoSolver * pardisoSolver;
-  #endif
+  SparseMatrix *systemMatrix;
+  double *bufferConstrained;
 
-  #ifdef SPOOLES
-    SPOOLESSolver * spoolesSolver;
-  #endif
-
-  #ifdef PCG
-    CGSolver * jacobiPreconditionedCGSolver;
-  #endif
+  PardisoSolver *pardisoSolver = nullptr;
+  SPOOLESSolver *spoolesSolver = nullptr;
+  CGSolver *jacobiPreconditionedCGSolver = nullptr;
 };
 
 #endif
-

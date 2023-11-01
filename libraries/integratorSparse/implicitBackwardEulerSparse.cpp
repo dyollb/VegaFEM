@@ -37,6 +37,14 @@
 #include "performanceCounter.h"
 #include "constrainedDOFs.h"
 #include "implicitBackwardEulerSparse.h"
+#include "integratorSolverSelection.h"
+
+#ifdef PARDISO
+  #include "sparseSolvers.h"
+#endif
+#ifdef PCG
+  #include "CGSolver.h"
+#endif
 
 ImplicitBackwardEulerSparse::ImplicitBackwardEulerSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, int numSolverThreads_): ImplicitNewmarkSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef, maxIterations, epsilon, 0.25, 0.5, numSolverThreads_)
 {
@@ -69,7 +77,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
   for(int i=0; i<r; i++)
   {
     qaccel_1[i] = qaccel[i] = 0; // acceleration is actually not used in this integrator
-    q_1[i] = q[i]; 
+    q_1[i] = q[i];
     qvel_1[i] = qvel[i];
   }
 
@@ -124,7 +132,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
       if (tangentStiffnessMatrixOffset != NULL)
         tangentStiffnessMatrix->AddSubMatrix(1.0, *tangentStiffnessMatrixOffset, 2);
 
-      // build effective stiffness: 
+      // build effective stiffness:
       // Keff = M + h D + h^2 * K
       // compute force residual, store it into aux variable qresidual
       // qresidual = h * (-D qdot - fint + fext - h * K * qdot)) // this is semi-implicit Euler
@@ -194,7 +202,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     //printf("numIter: %d error2: %G\n", numIter, error);
 
     // on the first iteration, compute initial error
-    if (numIter == 0) 
+    if (numIter == 0)
     {
       error0 = error;
       errorQuotient = 1.0;
@@ -202,7 +210,7 @@ int ImplicitBackwardEulerSparse::DoTimestep()
     else
     {
       // error divided by the initial error, before performing this iteration
-      errorQuotient = error / error0; 
+      errorQuotient = error / error0;
     }
 
     if (errorQuotient < epsilon * epsilon)
@@ -309,4 +317,3 @@ int ImplicitBackwardEulerSparse::DoTimestep()
 
   return 0;
 }
-

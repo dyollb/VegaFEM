@@ -37,11 +37,19 @@
 #include "performanceCounter.h"
 #include "constrainedDOFs.h"
 #include "implicitNewmarkSparse.h"
+#include "integratorSolverSelection.h"
+
+#ifdef PARDISO
+  #include "sparseSolvers.h"
+#endif
+#ifdef PCG
+  #include "CGSolver.h"
+#endif
 
 ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, double NewmarkBeta, double NewmarkGamma, int numSolverThreads_): IntegratorBaseSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef), numSolverThreads(numSolverThreads_)
 {
   this->maxIterations = maxIterations; // maxIterations = 1 for semi-implicit
-  this->epsilon = epsilon; 
+  this->epsilon = epsilon;
   this->NewmarkBeta = NewmarkBeta;
   this->NewmarkGamma = NewmarkGamma;
 
@@ -126,7 +134,7 @@ int ImplicitNewmarkSparse::SetState(double * q_, double * qvel_)
   for(int i=0; i<numConstrainedDOFs; i++)
     q[constrainedDOFs[i]] = qvel[constrainedDOFs[i]] = 0.0;
 
-  // M * qaccel + C * qvel + R(q) = P_0 
+  // M * qaccel + C * qvel + R(q) = P_0
   // R(q) = P_0 = 0
   // i.e. M * qaccel = - C * qvel - R(q)
 
@@ -180,12 +188,12 @@ int ImplicitNewmarkSparse::SetState(double * q_, double * qvel_)
     printf("Error: %s sparse solver returned non-zero exit status %d.\n", solverString, (int)info);
     return 1;
   }
-  
+
   ConstrainedDOFs::InsertDOFs(r, buffer, qaccel, numConstrainedDOFs, constrainedDOFs);
 
   return 0;
 }
- 
+
 int ImplicitNewmarkSparse::DoTimestep()
 {
   int numIter = 0;
@@ -196,7 +204,7 @@ int ImplicitNewmarkSparse::DoTimestep()
   // store current amplitudes and set initial guesses for qaccel, qvel
   for(int i=0; i<r; i++)
   {
-    q_1[i] = q[i]; 
+    q_1[i] = q[i];
     qvel_1[i] = qvel[i];
     qaccel_1[i] = qaccel[i];
 
@@ -296,7 +304,7 @@ int ImplicitNewmarkSparse::DoTimestep()
       error += qresidual[i] * qresidual[i];
 
     // on the first iteration, compute initial error
-    if (numIter == 0) 
+    if (numIter == 0)
     {
       error0 = error;
       errorQuotient = 1.0;
@@ -304,7 +312,7 @@ int ImplicitNewmarkSparse::DoTimestep()
     else
     {
       // error divided by the initial error, before performing this iteration
-      errorQuotient = error / error0; 
+      errorQuotient = error / error0;
     }
 
     if (errorQuotient < epsilon * epsilon)
@@ -396,18 +404,18 @@ int ImplicitNewmarkSparse::DoTimestep()
 }
 
 void ImplicitNewmarkSparse::UseStaticSolver(bool useStaticSolver_)
-{ 
+{
   useStaticSolver = useStaticSolver_;
 
-  if (!useStaticSolver) 
+  if (!useStaticSolver)
   {
     memset(qvel, 0, sizeof(double) * r);
     memset(qaccel, 0, sizeof(double) * r);
-    memset(qvel_1, 0, sizeof(double) * r); 
+    memset(qvel_1, 0, sizeof(double) * r);
     memset(qaccel_1, 0, sizeof(double) * r);
     memcpy(q_1, q, sizeof(double) * r);
   }
-} 
+}
 
 void ImplicitNewmarkSparse::SetTangentStiffnessMatrixOffset(SparseMatrix * tangentStiffnessMatrixOffset_, int reuseTopology)
 {
@@ -417,4 +425,3 @@ void ImplicitNewmarkSparse::SetTangentStiffnessMatrixOffset(SparseMatrix * tange
   if (!reuseTopology)
     tangentStiffnessMatrix->BuildSubMatrixIndices(*tangentStiffnessMatrixOffset, 2);
 }
-

@@ -37,6 +37,17 @@
 #include "performanceCounter.h"
 #include "constrainedDOFs.h"
 #include "eulerSparse.h"
+#include "integratorSolverSelection.h"
+
+#ifdef PARDISO
+  #include "sparseSolvers.h"
+#endif
+#ifdef SPOOLES
+  #include "sparseSolvers.h"
+#endif
+#ifdef PCG
+  #include "CGSolver.h"
+#endif
 
 EulerSparse::EulerSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int symplectic_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, int numSolverThreads): IntegratorBaseSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, 0.0), symplectic(symplectic_)
 {
@@ -107,7 +118,7 @@ int EulerSparse::DoTimestep()
   // store current state
   for(int i=0; i<r; i++)
   {
-    q_1[i] = q[i]; 
+    q_1[i] = q[i];
     qvel_1[i] = qvel[i];
     qaccel_1[i] = qaccel[i];
   }
@@ -180,7 +191,7 @@ int EulerSparse::DoTimestep()
     {
       qvel[i] += timestep * qdelta[i];
       q[i] += timestep * qvel[i];
-    }	
+    }
   }
   else
   {
@@ -200,4 +211,3 @@ int EulerSparse::DoTimestep()
 
   return 0;
 }
-
