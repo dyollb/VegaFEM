@@ -33,11 +33,17 @@
 // Selects which solver is used by the integrator library.
 // Exactly one of PARDISO, SPOOLES, PCG should be enabled.
 // Note: for PARDISO or SPOOLES, the selected solver must be installed and its
-//       availability also set in libraries/sparseSolvers/sparseSolverAvailability.h .
-//       The PCG solver (Jacobi-preconditioned Conjugate Gradients) is included 
-//       with Vega and therefore always available.
+//       availability also set in
+//       libraries/sparseSolvers/sparseSolverAvailability.h . The PCG solver
+//       (Jacobi-preconditioned Conjugate Gradients) is included with Vega and
+//       therefore always available.
 
-//#define PARDISO
-//#define SPOOLES
+#include "vega-config.h"
+
+#if defined(VEGA_USE_PARDISO)
+#define PARDISO
+#elif defined(VEGA_USE_SPOOLES)
+#define SPOOLES
+#else
 #define PCG
-
+#endif
