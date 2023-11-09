@@ -27,8 +27,8 @@ if(MKL_INCLUDE_DIRS
    AND MKL_LIBRARIES
    AND MKL_INTERFACE_LIBRARY
    AND MKL_SEQUENTIAL_LAYER_LIBRARY
-   AND MKL_CORE_LIBRARY
-   AND MKL_RT_LIBRARY)
+   AND MKL_RT_LIBRARY
+   AND MKL_CORE_LIBRARY)
   set(MKL_FIND_QUIETLY TRUE)
 endif()
 
@@ -38,11 +38,13 @@ if(NOT BUILD_SHARED_LIBS)
     set(SEQ_LIB "mkl_sequential.lib")
     set(THR_LIB "mkl_intel_thread.lib")
     set(COR_LIB "mkl_core.lib")
+    set(RT_LIB "mkl_rt.lib")
   else()
     set(INT_LIB "libmkl_intel_lp64.a")
     set(SEQ_LIB "libmkl_sequential.a")
     set(THR_LIB "libmkl_intel_thread.a")
     set(COR_LIB "libmkl_core.a")
+    set(RT_LIB "libmkl_rt.a")
   endif()
 else()
   set(INT_LIB "mkl_intel_lp64")
@@ -99,7 +101,13 @@ find_library(
   PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
       
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
-set(MKL_LIBRARIES ${MKL_RT_LIBRARY})
+if (MKL_RUNTIME_LAYERS)
+    message(STATUS "linking against ${MKL_RT_LIBRARY}")
+    set(MKL_LIBRARIES ${MKL_RT_LIBRARY})
+else()
+    set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREADED_LAYER_LIBRARY}
+                  ${MKL_CORE_LIBRARY})
+endif()
 
 if(NOT WIN32 AND NOT APPLE)
   # Added -Wl block to avoid circular dependencies.
@@ -118,6 +126,7 @@ if(MKL_INCLUDE_DIR
    AND MKL_INTERFACE_LIBRARY
    AND MKL_SEQUENTIAL_LAYER_LIBRARY
    AND MKL_THREADED_LAYER_LIBRARY
+   AND MKL_RT_LIBRARY   
    AND MKL_CORE_LIBRARY)
 
   if(NOT DEFINED ENV{CRAY_PRGENVPGI}
@@ -142,6 +151,7 @@ else()
   set(MKL_INTERFACE_LIBRARY "")
   set(MKL_SEQUENTIAL_LAYER_LIBRARY "")
   set(MKL_THREADED_LAYER_LIBRARY "")
+  set(MKL_RT_LIBRARY "")
   set(MKL_CORE_LIBRARY "")
 
 endif()
@@ -156,7 +166,8 @@ find_package_handle_standard_args(
   MKL_INCLUDE_DIRS
   MKL_INTERFACE_LIBRARY
   MKL_THREADED_LAYER_LIBRARY
+  MKL_RT_LIBRARY
   MKL_CORE_LIBRARY)
 
 mark_as_advanced(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_INTERFACE_LIBRARY
-                 MKL_THREADED_LAYER_LIBRARY MKL_CORE_LIBRARY)
+                 MKL_THREADED_LAYER_LIBRARY MKL_CORE_LIBRARY MKL_RT_LIBRARY)

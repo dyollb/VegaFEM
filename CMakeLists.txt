@@ -18,6 +18,7 @@ option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
 option(VEGA_USE_CGAL "Build meshing components using CGAL" OFF)
 option(VEGA_USE_EXPOKIT "Build matrix exponentials using Expokit" OFF)
 option(VEGA_BUILD_UTILITIES "Build utilities" OFF)
+option(MKL_RUNTIME_LAYERS "Link against mkl_rt" OFF)
 
 # thirdparties
 set(VEGA_DEPENDENCIES)
