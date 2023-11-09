@@ -14,7 +14,7 @@
 # MKL_CORE_LIBRARY - MKL core library
 #
 # The environment variables MKLROOT and INTEL are used to find the library.
-# Everything else is ignored. If MKL is found "-DMKL_ILP64" is added to
+# Everything else is ignored. If MKL is found "-DMKL_lp64" is added to
 # CMAKE_C_FLAGS and CMAKE_CXX_FLAGS.
 #
 # Example usage:
@@ -33,21 +33,21 @@ endif()
 
 if(NOT BUILD_SHARED_LIBS)
   if(WIN32)
-    set(INT_LIB "mkl_intel_ilp64.lib")
-    set(SEQ_LIB "mkl_sequential.lib")
+    set(INT_LIB "mkl_intel_lp64.lib")
     set(THR_LIB "mkl_intel_thread.lib")
     set(COR_LIB "mkl_core.lib")
+    set(OMP_LIB "iomp5.lib")
   else()
-    set(INT_LIB "libmkl_intel_ilp64.a")
-    set(SEQ_LIB "libmkl_sequential.a")
+    set(INT_LIB "libmkl_intel_lp64.a")
     set(THR_LIB "libmkl_intel_thread.a")
     set(COR_LIB "libmkl_core.a")
+    set(OMP_LIB "libiomp5.a")
   endif()
 else()
-  set(INT_LIB "mkl_intel_ilp64")
-  set(SEQ_LIB "mkl_sequential")
+  set(INT_LIB "mkl_intel_lp64")
   set(THR_LIB "mkl_intel_thread")
   set(COR_LIB "mkl_core")
+  set(OMP_LIB "iomp5")
 endif()
 
 if(MSVC)
@@ -77,18 +77,23 @@ find_library(
         ${INTEL_ROOT}/mkl/lib/intel64)
 
 find_library(
-  MKL_SEQUENTIAL_LAYER_LIBRARY
-  NAMES ${SEQ_LIB}
-  PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
-
+  MKL_THREAD_LIBRARY
+  NAMES ${THR_LIB}
+  PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${MKL_ROOT}/lib/intel64_win
+        ${INTEL_ROOT}/mkl/lib/intel64)
+  
 find_library(
   MKL_CORE_LIBRARY
   NAMES ${COR_LIB}
   PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
 
+find_library(
+  MKL_OMP_LIBRARY
+  NAMES ${OMP_LIB}
+  PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
+
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
-set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_SEQUENTIAL_LAYER_LIBRARY}
-                  ${MKL_CORE_LIBRARY})
+set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY} ${MKL_OMP_LIBRARY})
 
 if(NOT WIN32 AND NOT APPLE)
   # Added -Wl block to avoid circular dependencies.
@@ -100,13 +105,11 @@ elseif(APPLE)
   set(MKL_LIBRARIES -Wl,${MKL_LIBRARIES} -Wl,)
 endif()
 
-# message("1 ${MKL_INCLUDE_DIR}") message("2 ${MKL_INTERFACE_LIBRARY}")
-# message("3 ${MKL_SEQUENTIAL_LAYER_LIBRARY}") message("4 ${MKL_CORE_LIBRARY}")
-
 if(MKL_INCLUDE_DIR
    AND MKL_INTERFACE_LIBRARY
-   AND MKL_SEQUENTIAL_LAYER_LIBRARY
-   AND MKL_CORE_LIBRARY)
+   AND MKL_THREAD_LIBRARY
+   AND MKL_CORE_LIBRARY
+   AND MKL_OMP_LIBRARY)
 
   if(NOT DEFINED ENV{CRAY_PRGENVPGI}
      AND NOT DEFINED ENV{CRAY_PRGENVGNU}
@@ -116,7 +119,7 @@ if(MKL_INCLUDE_DIR
     set(ABI "-m64")
   endif()
 
-  # set(MKL_DEFINITIONS "-DMKL_ILP64 ${ABI}")
+  # set(MKL_DEFINITIONS "-DMKL_lp64 ${ABI}")
 
   add_library(MKL INTERFACE)
   add_library(MKL::MKL ALIAS MKL)
@@ -128,8 +131,9 @@ else()
   set(MKL_INCLUDE_DIRS "")
   set(MKL_LIBRARIES "")
   set(MKL_INTERFACE_LIBRARY "")
-  set(MKL_SEQUENTIAL_LAYER_LIBRARY "")
+  set(MKL_THREAD_LIBRARY "")
   set(MKL_CORE_LIBRARY "")
+  set(MKL_OMP_LIBRARY "")
 
 endif()
 
@@ -142,8 +146,8 @@ find_package_handle_standard_args(
   MKL_LIBRARIES
   MKL_INCLUDE_DIRS
   MKL_INTERFACE_LIBRARY
-  MKL_SEQUENTIAL_LAYER_LIBRARY
-  MKL_CORE_LIBRARY)
+  MKL_THREAD_LIBRARY
+  MKL_CORE_LIBRARY
+  MKL_OMP_LIBRARY)
 
-mark_as_advanced(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_INTERFACE_LIBRARY
-                 MKL_SEQUENTIAL_LAYER_LIBRARY MKL_CORE_LIBRARY)
+mark_as_advanced(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_INTERFACE_LIBRARY MKL_THREAD_LIBRARY MKL_CORE_LIBRARY MKL_OMP_LIBRARY)
