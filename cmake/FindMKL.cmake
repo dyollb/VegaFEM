@@ -27,7 +27,8 @@ if(MKL_INCLUDE_DIRS
    AND MKL_LIBRARIES
    AND MKL_INTERFACE_LIBRARY
    AND MKL_SEQUENTIAL_LAYER_LIBRARY
-   AND MKL_CORE_LIBRARY)
+   AND MKL_CORE_LIBRARY
+   AND MKL_RT_LIBRARY)
   set(MKL_FIND_QUIETLY TRUE)
 endif()
 
@@ -48,6 +49,7 @@ else()
   set(SEQ_LIB "mkl_sequential")
   set(THR_LIB "mkl_intel_thread")
   set(COR_LIB "mkl_core")
+  set(RT_LIB "mkl_rt")
 endif()
 
 if(MSVC)
@@ -90,10 +92,14 @@ find_library(
   MKL_CORE_LIBRARY
   NAMES ${COR_LIB}
   PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
-
+  
+find_library(
+  MKL_RT_LIBRARY
+  NAMES ${RT_LIB}
+  PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
+      
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
-set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREADED_LAYER_LIBRARY}
-                  ${MKL_CORE_LIBRARY})
+set(MKL_LIBRARIES ${MKL_RT_LIBRARY})
 
 if(NOT WIN32 AND NOT APPLE)
   # Added -Wl block to avoid circular dependencies.
