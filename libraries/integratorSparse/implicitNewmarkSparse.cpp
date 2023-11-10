@@ -39,12 +39,7 @@
 #include "implicitNewmarkSparse.h"
 #include "integratorSolverSelection.h"
 
-#ifdef PARDISO
-  #include "sparseSolvers.h"
-#endif
-#ifdef PCG
-  #include "CGSolver.h"
-#endif
+#include "sparseSolvers.h"
 
 ImplicitNewmarkSparse::ImplicitNewmarkSparse(int r, double timestep, SparseMatrix * massMatrix_, ForceModel * forceModel_, int numConstrainedDOFs_, int * constrainedDOFs_, double dampingMassCoef, double dampingStiffnessCoef, int maxIterations, double epsilon, double NewmarkBeta, double NewmarkGamma, int numSolverThreads_): IntegratorBaseSparse(r, timestep, massMatrix_, forceModel_, numConstrainedDOFs_, constrainedDOFs_, dampingMassCoef, dampingStiffnessCoef), numSolverThreads(numSolverThreads_)
 {

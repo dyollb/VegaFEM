@@ -19,6 +19,7 @@ jobs:
           os: ubuntu-20.04,
           cc: "gcc",
           cxx: "g++",
+          use_mkl: "OFF",
           use_tbb: "OFF"
           }
         - {
@@ -26,6 +27,7 @@ jobs:
           os: ubuntu-20.04,
           cc: "gcc",
           cxx: "g++",
+          use_mkl: "ON",
           use_tbb: "ON"
           }
         - {
@@ -33,6 +35,7 @@ jobs:
           os: macos-11,
           cc: "clang",
           cxx: "clang++",
+          use_mkl: "OFF",
           use_tbb: "OFF"
           }
 
@@ -59,7 +62,12 @@ jobs:
         cmake --version
 
     - name: configure
-      run: cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DVEGA_USE_TBB=${{ matrix.config.use_tbb }}
+      run: |
+        cmake -S . -B CIBuild -DCMAKE_INSTALL_PREFIX=CIInstall \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_SHARED_LIBS=ON \
+          -DVEGA_USE_TBB=${{ matrix.config.use_tbb }} \
+          -DVEGA_USE_INTEL_MKL=${{ matrix.config.use_mkl }}
       env:
         CC: ${{ matrix.config.cc }}
         CXX: ${{ matrix.config.cxx }}
