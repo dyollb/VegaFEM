@@ -119,6 +119,7 @@ if(NOT WIN32 AND NOT APPLE)
   # https://stackoverflow.com/questions/5651869/what-are-the-start-group-and-end-group-command-line-options
   # https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
   set(MKL_LIBRARIES -Wl,--start-group ${MKL_LIBRARIES} -Wl,--end-group)
+  set(MKL_LINK_OPTIONS "LINKER:-no-as-needed")
 elseif(APPLE)
   # MacOS does not support --start-group and --end-group
   set(MKL_LIBRARIES -Wl,${MKL_LIBRARIES} -Wl,)
@@ -138,14 +139,13 @@ if(MKL_INCLUDE_DIR
     set(ABI "-m64")
   endif()
 
-  # set(MKL_DEFINITIONS "-DMKL_lp64 ${ABI}")
-
   add_library(MKL INTERFACE)
   add_library(MKL::MKL ALIAS MKL)
   target_include_directories(MKL INTERFACE ${MKL_INCLUDE_DIR})
-  target_compile_definitions(MKL INTERFACE ${MKL_DEFINITIONS})
   target_link_libraries(MKL INTERFACE ${MKL_LIBRARIES})
-
+  target_compile_options(MKL INTERFACE ${ABI})
+  target_link_options(MKL INTERFACE "${MKL_LINK_OPTIONS}")
+  
 else()
   set(MKL_INCLUDE_DIRS "")
   set(MKL_LIBRARIES "")
