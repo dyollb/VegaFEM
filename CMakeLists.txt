@@ -13,6 +13,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 option(VEGA_USE_TBB "Build VegaFEM using TBB" ON)
 option(VEGA_USE_INTEL_MKL "Build VegaFEM using MKL" OFF)
 option(VEGA_USE_PARDISO "Build VegaFEM using PARDISO (requires MKL)" OFF)
+option(VEGA_USE_SPOOLES "Build VegaFEM using SPOOLES" OFF)
 option(VEGA_USE_GLEW "Build OpenGL shaders using GLEW" OFF)
 option(VEGA_USE_GLUT "Build components that depend on GLUT" OFF)
 option(VEGA_USE_CG_TOOLKIT "Build GPU components using Cg Toolkit" OFF)
@@ -23,12 +24,21 @@ option(VEGA_BUILD_UTILITIES "Build utilities" OFF)
 # thirdparties
 set(VEGA_DEPENDENCIES)
 
+if(VEGA_USE_SPOOLES AND VEGA_USE_PARDISO)
+  message(FATAL_ERROR "Cannot select PARDISO and SPOOLES")
+endif()
+
 find_package(OpenGL REQUIRED)
 list(APPEND VEGA_DEPENDENCIES OpenGL::GL)
 
 if(VEGA_USE_TBB)
   find_package(TBB REQUIRED)
   list(APPEND VEGA_DEPENDENCIES TBB::tbb)
+endif()
+
+if(VEGA_USE_SPOOLES)
+  find_package(SPOOLES REQUIRED)
+  list(APPEND VEGA_DEPENDENCIES SPOOLES)
 endif()
 
 if(VEGA_USE_GLUT)
