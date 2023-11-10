@@ -22,12 +22,19 @@
 # find_package(MKL) if(MKL_FOUND) target_link_libraries(TARGET ${MKL_LIBRARIES})
 # endif()
 
+option(MKL_RUNTIME_LAYERS "Link against mkl_rt" OFF)
+
 # If already in cache, be silent
-if(MKL_INCLUDE_DIRS
+if(MKL_RUNTIME_LAYERS 
+  AND MKL_INCLUDE_DIRS
+  AND MKL_LIBRARIES
+  AND MKL_RT_LIBRARY)
+elseif(MKL_INCLUDE_DIRS
    AND MKL_LIBRARIES
    AND MKL_INTERFACE_LIBRARY
-   AND MKL_SEQUENTIAL_LAYER_LIBRARY
-   AND MKL_CORE_LIBRARY)
+   AND MKL_THREAD_LIBRARY
+   AND MKL_CORE_LIBRARY
+   AND MKL_OMP_LIBRARY)
   set(MKL_FIND_QUIETLY TRUE)
 endif()
 
@@ -37,17 +44,20 @@ if(NOT BUILD_SHARED_LIBS)
     set(THR_LIB "mkl_intel_thread.lib")
     set(COR_LIB "mkl_core.lib")
     set(OMP_LIB "iomp5.lib")
+    set(RT_LIB "mkl_rt.lib")
   else()
     set(INT_LIB "libmkl_intel_lp64.a")
     set(THR_LIB "libmkl_intel_thread.a")
     set(COR_LIB "libmkl_core.a")
     set(OMP_LIB "libiomp5.a")
+    set(RT_LIB "libmkl_rt.a")
   endif()
 else()
   set(INT_LIB "mkl_intel_lp64")
   set(THR_LIB "mkl_intel_thread")
   set(COR_LIB "mkl_core")
   set(OMP_LIB "iomp5")
+  set(RT_LIB "mkl_rt")
 endif()
 
 if(MSVC)
@@ -92,8 +102,17 @@ find_library(
   NAMES ${OMP_LIB}
   PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
 
+find_library(
+  MKL_RT_LIBRARY
+  NAMES ${RT_LIB}
+  PATHS ${MKL_ROOT}/lib ${MKL_ROOT}/lib/intel64 ${INTEL_ROOT}/mkl/lib/intel64)
+
 set(MKL_INCLUDE_DIRS ${MKL_INCLUDE_DIR})
-set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY} ${MKL_OMP_LIBRARY})
+if(MKL_RUNTIME_LAYERS)
+    set(MKL_LIBRARIES ${MKL_RT_LIBRARY})
+else()
+  set(MKL_LIBRARIES ${MKL_INTERFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY} ${MKL_OMP_LIBRARY})
+endif()
 
 if(NOT WIN32 AND NOT APPLE)
   # Added -Wl block to avoid circular dependencies.
@@ -147,7 +166,8 @@ find_package_handle_standard_args(
   MKL_INCLUDE_DIRS
   MKL_INTERFACE_LIBRARY
   MKL_THREAD_LIBRARY
+  MKL_RT_LIBRARY
   MKL_CORE_LIBRARY
   MKL_OMP_LIBRARY)
 
-mark_as_advanced(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_INTERFACE_LIBRARY MKL_THREAD_LIBRARY MKL_CORE_LIBRARY MKL_OMP_LIBRARY)
+mark_as_advanced(MKL_INCLUDE_DIRS MKL_LIBRARIES MKL_INTERFACE_LIBRARY MKL_THREAD_LIBRARY MKL_CORE_LIBRARY MKL_OMP_LIBRARY MKL_RT_LIBRARY)
