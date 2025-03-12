@@ -34,6 +34,7 @@
 #define EDGEKEY_H
 
 #include <ostream>
+#include <cstdint>
 #include <functional>
 #include <utility>
 
